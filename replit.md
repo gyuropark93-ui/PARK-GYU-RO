@@ -77,6 +77,11 @@ shared/           # Shared code between client/server
 ## Recent Changes
 
 ### January 26, 2026 (Latest)
+- **Improved Video blocks** - YouTube/Vimeo URL auto-conversion, lazy preview, secure iframe sandbox
+  - Paste any YouTube/Vimeo URL (watch, shorts, youtu.be, embed) and it's auto-converted
+  - Lazy preview with "Load Preview" button for performance
+  - Aspect ratio selector (16:9, 4:3, 1:1)
+  - Secure iframe with proper sandbox attributes
 - **Removed Draft/Published status** - Projects save immediately and are always visible on public site
 - **Fixed block action buttons** - Actions now show on hover OR selection (desktop), selection only (mobile)
 - **Improved click-outside-to-deselect** - Safe document-level handler that respects blocks, inspector panel, and bottom sheet
