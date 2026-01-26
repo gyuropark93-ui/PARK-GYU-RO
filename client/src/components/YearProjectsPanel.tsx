@@ -91,7 +91,7 @@ function ProjectDetailView({
 }) {
   const { data: blocks, isLoading } = useProjectBlocks(project.id);
   
-  const sortedBlocks = blocks?.sort((a, b) => a.sort_order - b.sort_order) || [];
+  const sortedBlocks = blocks ? [...blocks].sort((a, b) => a.sort_order - b.sort_order) : [];
   const firstVideoBlock = sortedBlocks.find(b => b.type === 'video');
   const hasHeroVideo = !!firstVideoBlock;
 
