@@ -3,6 +3,8 @@ import { X, Loader2, ArrowLeft } from 'lucide-react';
 import { useProjectsByYear, useProjectBlocks } from '@/hooks/use-projects';
 import { ProjectCard } from './ProjectCard';
 import type { Project, ProjectBlock, ImageBlockData, TextBlockData, VideoBlockData, GridBlockData } from '@/lib/supabase';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 
 interface YearProjectsPanelProps {
   year: number;
@@ -26,11 +28,31 @@ function ImageBlock({ data }: { data: ImageBlockData }) {
 }
 
 function TextBlock({ data }: { data: TextBlockData }) {
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: data.json || { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: data.markdown || '' }] }] },
+    editable: false,
+  });
+
+  useEffect(() => {
+    if (editor && data.json) {
+      editor.commands.setContent(data.json);
+    }
+  }, [data.json, editor]);
+
+  if (!editor) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 md:px-0">
+        <p className="text-zinc-300 whitespace-pre-wrap leading-relaxed text-base md:text-lg">
+          {data.markdown || ''}
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-0">
-      <p className="text-zinc-300 whitespace-pre-wrap leading-relaxed text-base md:text-lg">
-        {data.markdown}
-      </p>
+    <div className="max-w-3xl mx-auto px-4 md:px-0 prose prose-invert prose-zinc max-w-none">
+      <EditorContent editor={editor} />
     </div>
   );
 }

@@ -1,0 +1,47 @@
+Update the admin project builder as follows:
+
+A) Text block storage must use JSON (TipTap document)
+- Use TipTap editor.
+- Persist editor content as `project_blocks.data.text.json` (not HTML).
+- Provide edit/preview toggle, but preview should render from the JSON.
+
+B) Implement real drag-and-drop reordering for blocks on DESKTOP
+Current issue:
+- The UI shows a “grab” cursor but blocks do not actually reorder.
+
+Requirements:
+1) Use a modern, maintained drag library suitable for React:
+   - Prefer @dnd-kit (core + sortable).
+2) Only enable drag on desktop (pointer fine).
+   - Keep mobile reordering as up/down buttons (already implemented).
+3) Add a visible drag handle on each block (left side).
+   - Drag starts ONLY from the handle, not from inside inputs/editors (avoid conflicts).
+4) During dragging:
+   - Show a placeholder / ghost preview.
+   - Smooth animation on drop.
+5) On drop:
+   - Update local block order immediately (optimistic UI).
+   - Recompute `sort_order` sequentially (e.g. 0..n-1).
+   - Persist the new sort_order to Supabase using the existing `useReorderBlocks` mutation.
+6) Ensure reordering works even when blocks contain:
+   - TipTap editor
+   - image upload buttons
+   - inputs
+   by preventing pointer capture issues and not attaching drag listeners to the full block container.
+
+Implementation details (must-do):
+- Use DndContext + SortableContext + useSortable per block.
+- Use closestCenter collision detection.
+- Provide sensors: PointerSensor with activationConstraint (distance: 8) to avoid accidental drags.
+- Ensure each block has stable id keys: block.id.
+- After reorder success, invalidate query ['project_blocks', projectId] as already done.
+
+C) Fix pointer-events / z-index issues preventing drag
+- Ensure the canvas container allows pointer interactions.
+- Ensure no overlay/backdrop element is intercepting pointer events over the blocks.
+- Drag handle must be above any block overlay with correct z-index.
+
+Deliver:
+- Working drag-and-drop reordering on desktop
+- Mobile up/down reorder remains
+- TipTap JSON persistence for text blocks

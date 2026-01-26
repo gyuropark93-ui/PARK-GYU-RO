@@ -30,7 +30,8 @@ export interface ImageBlockData {
 }
 
 export interface TextBlockData {
-  markdown: string;
+  markdown?: string;
+  json?: Record<string, unknown>;
 }
 
 export interface VideoBlockData {

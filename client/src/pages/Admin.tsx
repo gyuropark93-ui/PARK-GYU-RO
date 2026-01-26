@@ -1,13 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useRoute } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { useProjects, useProject, useCreateProject, useUpdateProject, useDeleteProject, useProjectBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock, useReorderBlocks, uploadImage } from '@/hooks/use-projects';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Pencil, Trash2, LogOut, Plus, ArrowLeft, Image, Type, Video, Grid3X3, GripVertical, ChevronUp, ChevronDown, Save, X } from 'lucide-react';
-import type { Project, ProjectInsert, ProjectBlock, BlockType, ImageBlockData, TextBlockData, VideoBlockData, GridBlockData } from '@/lib/supabase';
+import type { Project, ProjectBlock, BlockType, ImageBlockData, TextBlockData, VideoBlockData, GridBlockData } from '@/lib/supabase';
+import { TipTapEditor } from '@/components/TipTapEditor';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 function LoginForm({ onLogin }: { onLogin: (email: string, password: string) => Promise<void> }) {
   const [email, setEmail] = useState('');
@@ -188,9 +205,13 @@ interface BlockEditorProps {
   isFirst: boolean;
   isLast: boolean;
   isMobile: boolean;
+  dragHandleProps?: {
+    attributes: ReturnType<typeof useSortable>['attributes'];
+    listeners: ReturnType<typeof useSortable>['listeners'];
+  };
 }
 
-function BlockEditor({ block, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst, isLast, isMobile }: BlockEditorProps) {
+function BlockEditor({ block, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst, isLast, isMobile, dragHandleProps }: BlockEditorProps) {
   const [uploading, setUploading] = useState(false);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -228,10 +249,21 @@ function BlockEditor({ block, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst,
     onUpdate({ urls } as GridBlockData);
   };
 
+  const textData = block.data as TextBlockData;
+
   return (
-    <div className="group bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
+    <div className="group bg-zinc-900 rounded-xl border border-zinc-800 overflow-visible">
       <div className="flex items-center gap-2 px-4 py-2 bg-zinc-800/50 border-b border-zinc-800">
-        {!isMobile && <GripVertical className="w-4 h-4 text-zinc-600 cursor-grab" />}
+        {!isMobile && dragHandleProps && (
+          <div 
+            {...dragHandleProps.attributes} 
+            {...dragHandleProps.listeners}
+            className="cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-zinc-700 transition-colors touch-none"
+            data-testid={`drag-handle-${block.id}`}
+          >
+            <GripVertical className="w-4 h-4 text-zinc-500" />
+          </div>
+        )}
         <span className="text-xs text-zinc-500 uppercase tracking-wide flex-1">
           {block.type}
         </span>
@@ -282,11 +314,9 @@ function BlockEditor({ block, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst,
         )}
 
         {block.type === 'text' && (
-          <Textarea
-            value={(block.data as TextBlockData).markdown || ''}
-            onChange={(e) => onUpdate({ markdown: e.target.value } as TextBlockData)}
-            placeholder="Enter text content..."
-            className="bg-zinc-800 border-zinc-700 text-white min-h-[120px] resize-y"
+          <TipTapEditor
+            content={textData.json || null}
+            onChange={(json) => onUpdate({ json } as TextBlockData)}
           />
         )}
 
@@ -338,6 +368,37 @@ function BlockEditor({ block, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst,
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+interface SortableBlockEditorProps extends Omit<BlockEditorProps, 'dragHandleProps'> {
+  id: string;
+}
+
+function SortableBlockEditor(props: SortableBlockEditorProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: props.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : 'auto',
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <BlockEditor
+        {...props}
+        dragHandleProps={{ attributes, listeners }}
+      />
     </div>
   );
 }
@@ -406,7 +467,7 @@ function ProjectBuilder({ projectId }: { projectId?: string }) {
         data = { url: '' };
         break;
       case 'text':
-        data = { markdown: '' };
+        data = { json: { type: 'doc', content: [] } };
         break;
       case 'video':
         data = { embedUrl: '' };
@@ -445,6 +506,34 @@ function ProjectBuilder({ projectId }: { projectId?: string }) {
     const updates = newBlocks.map((block, idx) => ({ id: block.id, sort_order: idx }));
     await reorderBlocks.mutateAsync({ projectId, blocks: updates });
   };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id || !projectId) return;
+
+    const oldIndex = blocks.findIndex((b) => b.id === active.id);
+    const newIndex = blocks.findIndex((b) => b.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const newBlocks = arrayMove(blocks, oldIndex, newIndex);
+    setLocalBlocks(newBlocks);
+
+    const updates = newBlocks.map((block, idx) => ({ id: block.id, sort_order: idx }));
+    await reorderBlocks.mutateAsync({ projectId, blocks: updates });
+  }, [blocks, projectId, reorderBlocks]);
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -617,19 +706,47 @@ function ProjectBuilder({ projectId }: { projectId?: string }) {
               </div>
             </div>
 
-            {blocks.map((block, index) => (
-              <BlockEditor
-                key={block.id}
-                block={block}
-                onUpdate={(data) => handleBlockUpdate(block.id, data)}
-                onDelete={() => handleBlockDelete(block.id)}
-                onMoveUp={() => moveBlock(index, 'up')}
-                onMoveDown={() => moveBlock(index, 'down')}
-                isFirst={index === 0}
-                isLast={index === blocks.length - 1}
-                isMobile={isMobile}
-              />
-            ))}
+            {!isMobile ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={blocks.map((b) => b.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {blocks.map((block, index) => (
+                    <SortableBlockEditor
+                      key={block.id}
+                      id={block.id}
+                      block={block}
+                      onUpdate={(data) => handleBlockUpdate(block.id, data)}
+                      onDelete={() => handleBlockDelete(block.id)}
+                      onMoveUp={() => moveBlock(index, 'up')}
+                      onMoveDown={() => moveBlock(index, 'down')}
+                      isFirst={index === 0}
+                      isLast={index === blocks.length - 1}
+                      isMobile={isMobile}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            ) : (
+              blocks.map((block, index) => (
+                <BlockEditor
+                  key={block.id}
+                  block={block}
+                  onUpdate={(data) => handleBlockUpdate(block.id, data)}
+                  onDelete={() => handleBlockDelete(block.id)}
+                  onMoveUp={() => moveBlock(index, 'up')}
+                  onMoveDown={() => moveBlock(index, 'down')}
+                  isFirst={index === 0}
+                  isLast={index === blocks.length - 1}
+                  isMobile={isMobile}
+                />
+              ))
+            )}
 
             {blocks.length === 0 && projectId && (
               <div className="text-center py-12 text-zinc-600">
