@@ -142,19 +142,33 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Year Indicator (z-30) - Clickable to open projects */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30">
+      {/* Central CTA Button (z-[25]) */}
+      <div className="absolute left-1/2 -translate-x-1/2 z-[25] bottom-32 md:bottom-36">
         <button
           onClick={() => !isTransitioning && setShowProjects(true)}
           disabled={isTransitioning}
-          className="focus:outline-none focus:ring-2 focus:ring-primary/50 rounded-full transition-transform hover:scale-105 active:scale-95"
+          className="
+            px-8 py-3 md:px-10 md:py-4
+            bg-white/10 backdrop-blur-md
+            border border-white/20
+            rounded-full
+            text-white font-semibold tracking-wider text-sm md:text-base
+            shadow-[0_0_20px_rgba(255,255,255,0.15),inset_0_1px_0_rgba(255,255,255,0.2)]
+            hover:bg-white/20 hover:shadow-[0_0_30px_rgba(255,255,255,0.25),inset_0_1px_0_rgba(255,255,255,0.3)]
+            active:scale-95
+            transition-all duration-200
+            focus:outline-none focus:ring-2 focus:ring-white/40
+            disabled:opacity-50 disabled:cursor-not-allowed
+          "
           data-testid="button-view-projects"
         >
-          <YearIndicator currentYear={currentYear} />
+          CLICK HERE
         </button>
-        <p className="text-center text-xs text-muted-foreground mt-2 opacity-70">
-          Click to view projects
-        </p>
+      </div>
+
+      {/* Year Indicator (z-30) - Display only, no interactions */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+        <YearIndicator currentYear={currentYear} />
       </div>
 
       {/* Year Projects Panel */}
