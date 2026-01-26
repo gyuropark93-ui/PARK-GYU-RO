@@ -1,6 +1,7 @@
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, AlertCircle } from 'lucide-react';
 import { useProjectBlocks } from '@/hooks/use-projects';
 import type { Project, ProjectBlock, ImageBlockData, TextBlockData, VideoBlockData, GridBlockData } from '@/lib/supabase';
+import { toEmbedUrl, getAspectRatioClass } from '@/lib/videoEmbed';
 
 interface ProjectModalProps {
   project: Project;
@@ -26,13 +27,30 @@ function TextBlock({ data }: { data: TextBlockData }) {
 }
 
 function VideoBlock({ data }: { data: VideoBlockData }) {
+  const rawUrl = data.originalUrl || data.embedUrl || '';
+  const result = toEmbedUrl(rawUrl);
+  const safeEmbedUrl = result.embedUrl || data.embedUrl;
+  const aspectClass = getAspectRatioClass(data.aspect);
+  
+  if (!safeEmbedUrl) {
+    return (
+      <div className="aspect-video w-full bg-zinc-800 flex items-center justify-center gap-2 text-zinc-400">
+        <AlertCircle className="w-5 h-5" />
+        <span>Video link invalid. Please update in admin.</span>
+      </div>
+    );
+  }
+  
   return (
-    <div className="aspect-video w-full bg-black">
+    <div className={`${aspectClass} w-full bg-black`}>
       <iframe
-        src={data.embedUrl}
+        src={safeEmbedUrl}
         className="w-full h-full"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+        title="Embedded video"
       />
     </div>
   );
@@ -88,7 +106,7 @@ export function ProjectModal({ project, onClose }: ProjectModalProps) {
 
         <div className="aspect-video w-full overflow-hidden rounded-t-2xl">
           <img
-            src={project.cover_url}
+            src={project.cover_url || ''}
             alt={project.title}
             className="w-full h-full object-cover"
           />

@@ -49,6 +49,7 @@ export interface TextBlockData {
 }
 
 export interface VideoBlockData {
+  originalUrl?: string;
   embedUrl: string;
   aspect?: '16:9' | '4:3' | '1:1';
   lazyPreview?: boolean;

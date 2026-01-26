@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Loader2, ArrowLeft } from 'lucide-react';
+import { X, Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
 import { useProjectsByYear, useProjectBlocks } from '@/hooks/use-projects';
 import { ProjectCard } from './ProjectCard';
 import type { Project, ProjectBlock, ImageBlockData, TextBlockData, VideoBlockData, GridBlockData, DividerBlockData, SpacerBlockData } from '@/lib/supabase';
+import { toEmbedUrl, getAspectRatioClass } from '@/lib/videoEmbed';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 
@@ -58,14 +59,33 @@ function TextBlock({ data }: { data: TextBlockData }) {
 }
 
 function VideoBlock({ data, isHero = false }: { data: VideoBlockData; isHero?: boolean }) {
+  const rawUrl = data.originalUrl || data.embedUrl || '';
+  const result = toEmbedUrl(rawUrl);
+  const safeEmbedUrl = result.embedUrl || data.embedUrl;
+  const aspectClass = getAspectRatioClass(data.aspect);
+  
+  if (!safeEmbedUrl) {
+    return (
+      <div className={`w-full ${isHero ? '' : 'max-w-4xl mx-auto px-4 md:px-0'}`}>
+        <div className="aspect-video w-full bg-zinc-800 rounded-lg flex items-center justify-center gap-2 text-zinc-400">
+          <AlertCircle className="w-5 h-5" />
+          <span>Video link invalid. Please update in admin.</span>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className={`w-full ${isHero ? '' : 'max-w-4xl mx-auto px-4 md:px-0'}`}>
-      <div className="aspect-video w-full bg-black rounded-lg overflow-hidden">
+      <div className={`${aspectClass} w-full bg-black rounded-lg overflow-hidden`}>
         <iframe
-          src={data.embedUrl}
+          src={safeEmbedUrl}
           className="w-full h-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+          sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+          title="Embedded video"
         />
       </div>
     </div>

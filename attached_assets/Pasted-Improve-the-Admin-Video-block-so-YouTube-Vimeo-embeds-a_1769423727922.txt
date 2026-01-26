@@ -1,0 +1,82 @@
+Improve the Admin “Video” block so YouTube/Vimeo embeds always work.
+Fix the current error: “Refused to display … X-Frame-Options sameorigin” by preventing non-embed URLs from being iframed.
+
+SCOPE
+- Admin editor only (public rendering should also use the safe embed URL if it displays videos).
+- Do not change the rest of the site.
+
+GOALS
+1) The user can paste ANY common YouTube/Vimeo URL (watch URL, youtu.be, vimeo.com, already-embed URL).
+2) The app automatically converts it into a valid iframe-safe embed URL.
+3) The editor shows a preview reliably.
+4) Store both:
+   - originalUrl (what user pasted)
+   - embedUrl (computed, iframe-safe)
+5) Validate and show a clear inline error if the URL cannot be embedded.
+
+DATA MODEL (video block)
+project_blocks.data.video = {
+  originalUrl: string,
+  embedUrl: string,
+  aspect: '16:9' | '4:3' | '1:1',
+  lazyPreview: boolean
+}
+
+IMPLEMENTATION DETAILS
+
+A) Add a shared utility: toEmbedUrl(raw: string): { embedUrl: string | null, provider: 'youtube' | 'vimeo' | 'unknown' }
+- Trim input, parse with new URL()
+- YouTube support:
+  - https://www.youtube.com/watch?v=VIDEO_ID -> https://www.youtube.com/embed/VIDEO_ID
+  - https://youtu.be/VIDEO_ID -> https://www.youtube.com/embed/VIDEO_ID
+  - https://www.youtube.com/embed/VIDEO_ID -> keep as-is
+  - Also handle shorts:
+    - https://www.youtube.com/shorts/VIDEO_ID -> https://www.youtube.com/embed/VIDEO_ID
+- Vimeo support:
+  - https://vimeo.com/VIDEO_ID -> https://player.vimeo.com/video/VIDEO_ID
+  - https://player.vimeo.com/video/VIDEO_ID -> keep as-is
+- Return null if ID is missing or invalid.
+
+B) Admin Video block UI changes
+- Input label: “YouTube / Vimeo URL”
+- When user pastes/changes URL:
+  - compute embedUrl with toEmbedUrl()
+  - if valid: show “Embed preview ready” and render preview iframe using embedUrl
+  - if invalid: show inline error text and do not render iframe
+- Add a small helper text under the input:
+  - “Paste a normal YouTube/Vimeo link. We’ll convert it to an embed automatically.”
+
+C) Preview loading behavior (performance)
+- Default lazyPreview = true
+- If lazyPreview:
+  - show a thumbnail-like placeholder card with a “Load Preview” button
+  - only mount the iframe when user clicks “Load Preview”
+- If lazyPreview is false:
+  - mount iframe immediately
+
+D) Rendering (admin + public)
+- Anywhere a video block is rendered:
+  - NEVER iframe originalUrl
+  - iframe ONLY embedUrl
+- If embedUrl is missing, render a safe fallback message (“Video link invalid. Please update in admin.”)
+
+E) Security / sandbox
+- Add iframe attributes:
+  - allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+  - allowFullScreen
+  - referrerPolicy="strict-origin-when-cross-origin"
+  - sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+(Use a conservative sandbox that still allows YouTube/Vimeo playback.)
+
+F) Migration / backward compatibility
+- If existing data.video is currently a single string url:
+  - treat it as originalUrl
+  - compute embedUrl on load and use it
+  - when saving, persist in the new object shape.
+
+ACCEPTANCE TESTS
+- Pasting https://www.youtube.com/watch?v=dQw4w9WgXcQ results in iframe src https://www.youtube.com/embed/dQw4w9WgXcQ and preview plays.
+- Pasting https://youtu.be/dQw4w9WgXcQ works.
+- Pasting https://www.youtube.com/shorts/dQw4w9WgXcQ works.
+- Pasting https://vimeo.com/123456789 works and converts to https://player.vimeo.com/video/123456789.
+- Pasting https://www.youtube.com/ (no id) shows inline error and no iframe.

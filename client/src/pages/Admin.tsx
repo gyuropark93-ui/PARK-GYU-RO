@@ -5,8 +5,9 @@ import { useProjects, useProject, useCreateProject, useUpdateProject, useDeleteP
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Pencil, Trash2, LogOut, Plus, ArrowLeft, Image, Type, Video, Grid3X3, GripVertical, ChevronUp, ChevronDown, Save, X, Minus, Square, Copy } from 'lucide-react';
+import { Loader2, Pencil, Trash2, LogOut, Plus, ArrowLeft, Image, Type, Video, Grid3X3, GripVertical, ChevronUp, ChevronDown, Save, X, Minus, Square, Copy, Play, AlertCircle } from 'lucide-react';
 import type { Project, ProjectBlock, BlockType, ImageBlockData, TextBlockData, VideoBlockData, GridBlockData, DividerBlockData, SpacerBlockData } from '@/lib/supabase';
+import { toEmbedUrl, getAspectRatioClass } from '@/lib/videoEmbed';
 import { TipTapEditor } from '@/components/TipTapEditor';
 import {
   DndContext,
@@ -233,6 +234,115 @@ interface BlockEditorProps {
   };
 }
 
+function VideoBlockEditor({ data, onUpdate }: { data: VideoBlockData; onUpdate: (data: VideoBlockData) => void }) {
+  const [showPreview, setShowPreview] = useState(false);
+  const inputUrl = data.originalUrl || data.embedUrl || '';
+  const embedResult = inputUrl ? toEmbedUrl(inputUrl) : null;
+  const validEmbedUrl = embedResult?.embedUrl || null;
+  const error = embedResult?.error || null;
+  const lazyPreview = data.lazyPreview !== false;
+  const aspect = data.aspect || '16:9';
+  const aspectClass = getAspectRatioClass(aspect);
+
+  const handleUrlChange = (rawUrl: string) => {
+    const result = toEmbedUrl(rawUrl);
+    onUpdate({
+      ...data,
+      originalUrl: rawUrl,
+      embedUrl: result.embedUrl || '',
+      lazyPreview: data.lazyPreview,
+      aspect: data.aspect,
+    });
+    setShowPreview(false);
+  };
+
+  return (
+    <div onClick={(e) => e.stopPropagation()}>
+      <label className="block text-sm text-zinc-400 mb-1">YouTube / Vimeo URL</label>
+      <Input
+        value={inputUrl}
+        onChange={(e) => handleUrlChange(e.target.value)}
+        placeholder="https://www.youtube.com/watch?v=..."
+        className="bg-zinc-800 border-zinc-700 text-white"
+        data-testid="input-video-url"
+      />
+      <p className="text-xs text-zinc-500 mt-1">
+        Paste a normal YouTube/Vimeo link. We'll convert it to an embed automatically.
+      </p>
+      
+      {error && inputUrl && (
+        <div className="flex items-center gap-2 mt-2 text-red-400 text-sm">
+          <AlertCircle className="w-4 h-4" />
+          <span>{error}</span>
+        </div>
+      )}
+      
+      {validEmbedUrl && !error && (
+        <div className="text-sm text-green-400 mt-2">Embed preview ready</div>
+      )}
+      
+      {validEmbedUrl && (
+        <div className={`mt-4 ${aspectClass} bg-black rounded-lg overflow-hidden relative`}>
+          {lazyPreview && !showPreview ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900 text-white">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPreview(true)}
+                className="gap-2"
+                data-testid="button-load-preview"
+              >
+                <Play className="w-4 h-4" />
+                Load Preview
+              </Button>
+            </div>
+          ) : (
+            <iframe
+              src={validEmbedUrl}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+              sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+              title="Video preview"
+            />
+          )}
+        </div>
+      )}
+      
+      {validEmbedUrl && (
+        <div className="flex items-center gap-4 mt-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-zinc-400">Aspect:</label>
+            <Select
+              value={aspect}
+              onValueChange={(v) => onUpdate({ ...data, aspect: v as '16:9' | '4:3' | '1:1' })}
+            >
+              <SelectTrigger className="w-20 h-7 bg-zinc-800 border-zinc-700 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="16:9">16:9</SelectItem>
+                <SelectItem value="4:3">4:3</SelectItem>
+                <SelectItem value="1:1">1:1</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={lazyPreview}
+              onChange={(e) => onUpdate({ ...data, lazyPreview: e.target.checked })}
+              className="rounded border-zinc-600"
+            />
+            Lazy preview
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BlockEditor({ block, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveDown, isFirst, isLast, isMobile, isSelected, isHovered, onSelect, onHover, dragHandleProps }: BlockEditorProps) {
   const [uploading, setUploading] = useState(false);
   
@@ -364,23 +474,10 @@ function BlockEditor({ block, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveD
         )}
 
         {block.type === 'video' && (
-          <div onClick={(e) => e.stopPropagation()}>
-            <Input
-              value={(block.data as VideoBlockData).embedUrl || ''}
-              onChange={(e) => onUpdate({ ...block.data, embedUrl: e.target.value } as VideoBlockData)}
-              placeholder="YouTube or Vimeo embed URL"
-              className="bg-zinc-800 border-zinc-700 text-white"
-            />
-            {(block.data as VideoBlockData).embedUrl && (
-              <div className="mt-4 aspect-video bg-black rounded-lg overflow-hidden">
-                <iframe
-                  src={(block.data as VideoBlockData).embedUrl}
-                  className="w-full h-full"
-                  allowFullScreen
-                />
-              </div>
-            )}
-          </div>
+          <VideoBlockEditor
+            data={block.data as VideoBlockData}
+            onUpdate={(data) => onUpdate(data)}
+          />
         )}
 
         {block.type === 'grid' && (
