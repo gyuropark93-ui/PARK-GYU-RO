@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useRoute } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { useProjects, useProject, useCreateProject, useUpdateProject, useDeleteProject, useProjectBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock, useReorderBlocks, uploadImage } from '@/hooks/use-projects';
@@ -362,24 +362,24 @@ function ProjectBuilder({ projectId }: { projectId?: string }) {
   const [saving, setSaving] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  useState(() => {
+  useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  });
+  }, []);
 
-  useState(() => {
+  useEffect(() => {
     if (existingProject) {
       setTitle(existingProject.title);
       setYear(existingProject.year.toString());
       setCoverUrl(existingProject.cover_url);
     }
-  });
+  }, [existingProject]);
 
-  useState(() => {
+  useEffect(() => {
     setLocalBlocks(blocks);
-  });
+  }, [blocks]);
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
