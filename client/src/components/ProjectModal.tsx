@@ -2,6 +2,7 @@ import { X, Loader2, AlertCircle } from 'lucide-react';
 import { useProjectBlocks } from '@/hooks/use-projects';
 import type { Project, ProjectBlock, ImageBlockData, TextBlockData, VideoBlockData, GridBlockData } from '@/lib/supabase';
 import { toEmbedUrl, getAspectRatioClass } from '@/lib/videoEmbed';
+import { TipTapRenderer } from '@/components/TipTapEditor';
 
 interface ProjectModalProps {
   project: Project;
@@ -17,6 +18,13 @@ function ImageBlock({ data }: { data: ImageBlockData }) {
 }
 
 function TextBlock({ data }: { data: TextBlockData }) {
+  if (data.json && typeof data.json === 'object') {
+    return (
+      <div className="px-6 py-4 max-w-3xl mx-auto">
+        <TipTapRenderer content={data.json} />
+      </div>
+    );
+  }
   return (
     <div className="px-6 py-4 max-w-3xl mx-auto">
       <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
