@@ -96,7 +96,6 @@ export default function Home() {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-black select-none">
-      
       {/* Background Layer (z-0) - Always visible */}
       <div className="absolute inset-0 z-0">
         <img
@@ -105,7 +104,6 @@ export default function Home() {
           className="w-full h-full object-cover"
         />
       </div>
-
       {/* Video Overlay Layer (z-10) - Alpha transparent overlay */}
       {isTransitioning && transitionType && (
         <div className="absolute inset-0 z-10">
@@ -120,7 +118,6 @@ export default function Home() {
           />
         </div>
       )}
-
       {/* Navigation Layer (z-20) - Always on top */}
       <div className="absolute inset-0 z-20 flex items-center justify-between px-4 md:px-12 pointer-events-none">
         <div className="pointer-events-auto">
@@ -141,7 +138,6 @@ export default function Home() {
           />
         </div>
       </div>
-
       {/* Central CTA Button (z-[25]) */}
       <div className="absolute left-1/2 -translate-x-1/2 z-[25] bottom-32 md:bottom-36">
         <button
@@ -161,16 +157,12 @@ export default function Home() {
             disabled:opacity-50 disabled:cursor-not-allowed
           "
           data-testid="button-view-projects"
-        >
-          CLICK HERE
-        </button>
+        >VIEW PROJECTS</button>
       </div>
-
       {/* Year Indicator (z-30) - Display only, no interactions */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
         <YearIndicator currentYear={currentYear} />
       </div>
-
       {/* Year Projects Panel */}
       {showProjects && (
         <YearProjectsPanel
