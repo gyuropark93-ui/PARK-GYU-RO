@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, ArrowLeft } from 'lucide-react';
 import { useProjectsByYear, useProjectBlocks } from '@/hooks/use-projects';
 import { ProjectCard } from './ProjectCard';
-import type { Project, ProjectBlock, ImageBlockData, TextBlockData, VideoBlockData, GridBlockData } from '@/lib/supabase';
+import type { Project, ProjectBlock, ImageBlockData, TextBlockData, VideoBlockData, GridBlockData, DividerBlockData, SpacerBlockData } from '@/lib/supabase';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 
@@ -89,6 +89,25 @@ function GridBlock({ data }: { data: GridBlockData }) {
   );
 }
 
+function DividerBlock({ data }: { data: DividerBlockData }) {
+  return (
+    <div className="max-w-3xl mx-auto px-4 md:px-0 py-4">
+      <hr 
+        className="border-zinc-700" 
+        style={{ 
+          borderStyle: data.style || 'solid',
+          borderWidth: `${data.thickness || 1}px 0 0 0`,
+          opacity: data.opacity ?? 0.5
+        }} 
+      />
+    </div>
+  );
+}
+
+function SpacerBlock({ data }: { data: SpacerBlockData }) {
+  return <div style={{ height: `${data.height || 48}px` }} />;
+}
+
 function BlockRenderer({ block }: { block: ProjectBlock }) {
   switch (block.type) {
     case 'image':
@@ -99,6 +118,10 @@ function BlockRenderer({ block }: { block: ProjectBlock }) {
       return <VideoBlock data={block.data as VideoBlockData} />;
     case 'grid':
       return <GridBlock data={block.data as GridBlockData} />;
+    case 'divider':
+      return <DividerBlock data={block.data as DividerBlockData} />;
+    case 'spacer':
+      return <SpacerBlock data={block.data as SpacerBlockData} />;
     default:
       return null;
   }
@@ -142,7 +165,7 @@ function ProjectDetailView({
         ) : (
           <div className="w-full aspect-[21/9] relative overflow-hidden">
             <img
-              src={project.cover_url}
+              src={project.cover_url || ''}
               alt={project.title}
               className="w-full h-full object-cover"
             />

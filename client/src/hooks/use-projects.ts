@@ -43,6 +43,7 @@ export function useProjectsByYear(year: number) {
         .from('projects')
         .select('*')
         .eq('year', year)
+        .eq('status', 'published')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -79,7 +80,7 @@ export function useUpdateProject() {
     mutationFn: async ({ id, updates }: { id: string; updates: ProjectUpdate }) => {
       const { data, error } = await supabase
         .from('projects')
-        .update(updates)
+        .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
         .select()
         .single();

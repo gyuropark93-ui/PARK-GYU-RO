@@ -16,33 +16,68 @@ export interface Project {
   id: string;
   year: number;
   title: string;
-  cover_url: string;
+  cover_url: string | null;
+  status: 'draft' | 'published';
   created_at: string;
+  updated_at: string;
 }
 
-export type ProjectInsert = Omit<Project, 'id' | 'created_at'>;
-export type ProjectUpdate = Partial<ProjectInsert>;
+export type ProjectInsert = Omit<Project, 'id' | 'created_at' | 'updated_at'>;
+export type ProjectUpdate = Partial<Omit<ProjectInsert, 'status'>> & { status?: 'draft' | 'published'; updated_at?: string };
 
-export type BlockType = 'image' | 'text' | 'video' | 'grid';
+export type BlockType = 'image' | 'text' | 'video' | 'grid' | 'divider' | 'spacer';
+
+export interface BlockLayout {
+  align?: 'left' | 'center' | 'right';
+  width?: 'normal' | 'wide' | 'full';
+  padTop?: number;
+  padBottom?: number;
+  bg?: 'none' | 'card';
+}
 
 export interface ImageBlockData {
   url: string;
+  caption?: string;
+  fit?: 'cover' | 'contain';
+  position?: 'center' | 'top' | 'bottom';
+  layout?: BlockLayout;
 }
 
 export interface TextBlockData {
   markdown?: string;
   json?: Record<string, unknown>;
+  layout?: BlockLayout;
 }
 
 export interface VideoBlockData {
   embedUrl: string;
+  aspect?: '16:9' | '4:3' | '1:1';
+  lazyPreview?: boolean;
+  layout?: BlockLayout;
 }
 
 export interface GridBlockData {
   urls: string[];
+  columnsDesktop?: number;
+  columnsMobile?: number;
+  gap?: number;
+  layout?: BlockLayout;
 }
 
-export type BlockData = ImageBlockData | TextBlockData | VideoBlockData | GridBlockData;
+export interface DividerBlockData {
+  style?: 'solid' | 'dashed';
+  thickness?: number;
+  opacity?: number;
+  width?: 'normal' | 'wide' | 'full';
+  layout?: BlockLayout;
+}
+
+export interface SpacerBlockData {
+  height?: number;
+  layout?: BlockLayout;
+}
+
+export type BlockData = ImageBlockData | TextBlockData | VideoBlockData | GridBlockData | DividerBlockData | SpacerBlockData;
 
 export interface ProjectBlock {
   id: string;

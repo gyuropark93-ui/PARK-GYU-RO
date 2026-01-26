@@ -1,0 +1,203 @@
+Apply ALL the following changes to the /admin Behance-style project editor. This is the final combined spec. Implement exactly, and keep the public site unchanged.
+
+NON-NEGOTIABLE GOALS
+- Mobile admin pages MUST scroll smoothly with finger swipe like Instagram feed (native touch scrolling with inertia).
+- Text blocks MUST use TipTap and persist JSON at project_blocks.data.text.json.
+- Desktop MUST support real drag-and-drop reordering (handle-only).
+- Mobile MUST use up/down reorder buttons (no drag), and scrolling must not be blocked by any overlay/panel.
+- Remove “save first to enable” gating: the editor must be usable immediately.
+
+====================
+1) ROUTES / ACCESS
+====================
+- /admin: project list (requires login; show login screen if not authenticated)
+- /admin/projects/new: immediately creates a DRAFT project and redirects to /admin/projects/:id
+- /admin/projects/:id: builder/editor (requires login)
+
+No public navigation link to /admin.
+
+====================
+2) DATABASE (SUPABASE) MIGRATIONS
+====================
+Ensure tables exist:
+A) projects:
+- id uuid pk default gen_random_uuid()
+- year int not null
+- title text not null
+- cover_url text null
+- status text default 'draft'  -- 'draft' | 'published'
+- created_at timestamp default now()
+- updated_at timestamp default now()
+
+B) project_blocks:
+- id uuid pk default gen_random_uuid()
+- project_id uuid fk -> projects.id on delete cascade
+- sort_order int not null
+- type text not null  -- image | text | video | grid | divider | spacer
+- data jsonb not null
+- created_at timestamp default now()
+
+RLS:
+- Enable RLS for both tables.
+- Public: SELECT allowed on both tables.
+- Authenticated: INSERT/UPDATE/DELETE allowed on both tables.
+
+Storage:
+- Use bucket name EXACTLY: project-assets (public read).
+- Authenticated users can upload/modify/delete.
+
+====================
+3) BEHANCE-LIKE EDITOR UX (ADMIN)
+====================
+Top App Bar (sticky):
+- Back to list
+- Inline editable project title
+- Year selector
+- Status pill (Draft/Published)
+- “Saved / Unsaved changes” indicator
+- Save button
+- Publish toggle (optional; sets status='published')
+
+Main Canvas (center, the primary scroll area):
+- WYSIWYG stacked blocks preview
+- Minimal outlines only on hover/selected
+- Between blocks: “+ Add here” insertion control to insert at exact position
+- Selecting a block highlights it and shows:
+  - drag handle (desktop) OR up/down controls (mobile)
+  - duplicate
+  - delete
+
+Right Panel (desktop):
+- Add Content palette: Image / Text / Video / Grid / Divider / Spacer
+- Inspector panel for selected block (layout controls)
+
+Mobile:
+- Bottom toolbar for Add Content actions (same set)
+- Inspector opens as bottom sheet when selecting a block (not blocking canvas scroll unless interacting with sheet)
+- Touch targets >= 44px
+- No hover-only actions
+
+====================
+4) DRAFT-FIRST (NO “SAVE FIRST” GATING)
+====================
+- When user opens /admin/projects/new:
+  - Create a project immediately in Supabase:
+    - title = 'Untitled'
+    - cover_url = NULL
+    - status = 'draft'
+    - year = currently chosen year or default latest
+  - Redirect to /admin/projects/:id
+- Editor becomes fully usable immediately (add blocks, upload, edit text) without needing Save first.
+- Add “Delete draft” in project list.
+- Save button persists updates and sets updated_at.
+
+====================
+5) BLOCK TYPES + INSPECTOR CONTROLS
+====================
+Supported blocks: image | text | video | grid | divider | spacer
+
+All blocks store layout config:
+data.layout = {
+  align: 'left'|'center'|'right',
+  width: 'normal'|'wide'|'full',
+  padTop: number or preset,
+  padBottom: number or preset,
+  bg: 'none'|'card'
+}
+
+Image:
+data.image = { url, caption?, fit:'cover'|'contain', position:'center'|'top'|'bottom' }
+
+Grid:
+data.grid = { urls: string[], columnsDesktop: 2-4, columnsMobile: 1-2, gap: number }
+
+Video:
+data.video = { embedUrl, aspect:'16:9'|'4:3'|'1:1', lazyPreview:true }
+- Do not load heavy iframe automatically; show a preview placeholder and load iframe only on click.
+
+Divider:
+data.divider = { style:'solid'|'dashed', thickness:number, opacity:number, width:'normal'|'wide'|'full' }
+
+Spacer:
+data.spacer = { height:number or preset }
+
+====================
+6) TEXT EDITING (TIPTAP JSON)
+====================
+- Replace textarea with TipTap.
+- Persist content as: project_blocks.data.text.json
+- Provide bubble menu: bold / italic / underline / link
+- Provide small toolbar: headings (H2/H3), lists, align
+- Provide edit/preview toggle; preview renders from JSON.
+
+====================
+7) REAL REORDERING
+====================
+Desktop:
+- Implement @dnd-kit sortable.
+- Drag starts ONLY from the drag handle (not from the full block, not inside inputs/editors).
+- Use PointerSensor with activationConstraint distance: 8.
+- Show drag overlay/ghost and smooth animation.
+- On drop:
+  - optimistic UI reorder
+  - recompute sort_order sequentially
+  - persist to Supabase (use existing reorder mutation)
+  - invalidate query ['project_blocks', projectId]
+
+Mobile:
+- Keep up/down reorder buttons.
+- Ensure these do not block scrolling.
+
+====================
+8) SAVE MODEL + UNSAVED CHANGES
+====================
+- Maintain local editor state for project + blocks.
+- Mark “Unsaved changes” on any edit.
+- SAVE persists:
+  - project fields (title, year, cover_url, status, updated_at)
+  - blocks create/update/delete and sort_order in bulk
+- After success show “Saved”.
+- If navigation away with unsaved changes, show a confirm dialog.
+
+====================
+9) CRITICAL: MOBILE SCROLLING (INSTAGRAM-LIKE)
+====================
+Fix the bug where admin pages do not scroll on mobile.
+
+A) Use ONE primary scroll container for editor content:
+- Layout:
+  - wrapper: height: 100dvh; display:flex; flex-direction:column
+  - top bar: sticky/fixed
+  - bottom toolbar: fixed on mobile
+  - canvas: flex:1; overflow-y:auto; -webkit-overflow-scrolling: touch
+
+B) Do NOT globally block scroll:
+- Do not keep body/html overflow hidden on admin routes.
+- Only lock body scroll when a true modal is open.
+- Avoid global touch-action:none.
+- Do not call preventDefault on touchmove except when dragging a handle.
+
+C) Bottom sheet inspector must not steal all touches:
+- Backdrop must not intercept touches when sheet is closed.
+- When sheet is open:
+  - sheet can scroll internally
+  - canvas remains scrollable when interacting outside the sheet
+  - correct pointer-events + z-index to allow normal scrolling behavior
+
+D) Add a quick diagnostic in dev:
+- If canvas scrollHeight > clientHeight and scrollTop never changes on touch, log a warning.
+
+====================
+10) KEEP PUBLIC SITE UNCHANGED
+====================
+Do not modify:
+- subway homepage visuals
+- year transitions and overlay videos
+- VIEW PROJECTS public flow
+Only admin/editor changes.
+
+DELIVERABLES
+- Updated admin pages/components, CSS, and interactions
+- @dnd-kit reorder on desktop
+- TipTap JSON persistence
+- Verified mobile admin scrolling works like native feed scrolling
