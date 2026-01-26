@@ -77,6 +77,11 @@ shared/           # Shared code between client/server
 ## Recent Changes
 
 ### January 26, 2026 (Latest)
+- **Immediate UI updates** - Uploads and embeds now appear instantly without refresh
+  - Image block: uploaded images show immediately after upload completes
+  - Grid block: added images appear instantly
+  - Video block: pasting URL instantly updates input, embedUrl, and preview
+  - Local state is now the single source of truth, synced to DB on Save
 - **Improved Video blocks** - YouTube/Vimeo URL auto-conversion, lazy preview, secure iframe sandbox
   - Paste any YouTube/Vimeo URL (watch, shorts, youtu.be, embed) and it's auto-converted
   - Lazy preview with "Load Preview" button for performance
