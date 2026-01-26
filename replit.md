@@ -77,6 +77,16 @@ shared/           # Shared code between client/server
 ## Recent Changes
 
 ### January 26, 2026 (Latest)
+- **Rich Text Editor Upgrade** - Behance-style toolbar with full formatting options
+  - Heading dropdown (Paragraph, H1, H2, H3)
+  - Font family dropdown (Helvetica, Inter, Pretendard)
+  - Font size dropdown (12-48px)
+  - Bold, Italic, Underline with keyboard shortcuts (Ctrl+B/I/U)
+  - Text alignment (left, center, right)
+  - Bullet list, Numbered list
+  - Link insert/edit popover
+  - Clear formatting button
+  - Stores TipTap JSON in data.json, renders correctly on public pages
 - **Immediate UI updates** - Uploads and embeds now appear instantly without refresh
   - Image block: uploaded images show immediately after upload completes
   - Grid block: added images appear instantly
