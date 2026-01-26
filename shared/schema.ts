@@ -1,18 +1,14 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+export const site_visits = pgTable("site_visits", {
+  id: serial("id").primaryKey(),
+  year: integer("year").notNull(),
+  timestamp: text("timestamp").notNull(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
+export const insertVisitSchema = createInsertSchema(site_visits).omit({ id: true });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export type InsertVisit = z.infer<typeof insertVisitSchema>;
+export type Visit = typeof site_visits.$inferSelect;
