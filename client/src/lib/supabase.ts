@@ -17,13 +17,12 @@ export interface Project {
   year: number;
   title: string;
   cover_url: string | null;
-  status: 'draft' | 'published';
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export type ProjectInsert = Omit<Project, 'id' | 'created_at' | 'updated_at'>;
-export type ProjectUpdate = Partial<Omit<ProjectInsert, 'status'>> & { status?: 'draft' | 'published'; updated_at?: string };
+export type ProjectUpdate = Partial<ProjectInsert> & { updated_at?: string };
 
 export type BlockType = 'image' | 'text' | 'video' | 'grid' | 'divider' | 'spacer';
 

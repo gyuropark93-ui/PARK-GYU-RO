@@ -43,7 +43,6 @@ export function useProjectsByYear(year: number) {
         .from('projects')
         .select('*')
         .eq('year', year)
-        .eq('status', 'published')
         .order('created_at', { ascending: false });
       
       if (error) throw error;

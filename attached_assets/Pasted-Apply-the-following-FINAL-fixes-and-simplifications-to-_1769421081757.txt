@@ -1,0 +1,176 @@
+Apply the following FINAL fixes and simplifications to the /admin CMS editor.
+This prompt combines:
+- Removing Draft/Published entirely
+- Fixing block action buttons (delete/duplicate) disappearing
+- Stabilizing block selection + outside-click deselect
+- Keeping Behance-like UX and native mobile scrolling
+
+DO NOT change the public site.
+
+====================
+1) REMOVE DRAFT / STATUS COMPLETELY
+====================
+
+UI:
+- Remove the “Draft” pill/button from the admin top bar.
+- Remove any Publish / Status UI.
+- Top bar must contain ONLY:
+  - Back button
+  - Inline editable project title
+  - Year selector
+  - Unsaved/Saved indicator
+  - Save button
+
+Behavior:
+- Saving immediately persists the project and reflects on the public site.
+- No draft/published logic anywhere.
+
+Code:
+- Remove all references to:
+  - status
+  - draft
+  - published
+- Project creation insert must include ONLY existing required fields:
+  - year
+  - title = 'Untitled'
+  - cover_url = null
+- Save updates:
+  - title
+  - year
+  - cover_url
+  - updated_at
+  - project_blocks (create/update/delete + sort_order)
+
+Database:
+- Ignore `projects.status` if it exists.
+- Do NOT depend on it anywhere.
+
+====================
+2) FIX BLOCK ACTION BUTTONS (DELETE / DUPLICATE)
+====================
+
+Problem:
+- Action buttons appear only right after creation.
+- After clicking empty space, hovering the block again never shows actions.
+
+Root cause:
+- “Click outside to deselect” clears selection even when interacting with a block again.
+
+Fix requirements:
+- Keep “click empty space to deselect”.
+- Ensure hovering or clicking a block again ALWAYS restores actions.
+
+Implementation:
+
+A) Block wrapper
+- Wrap each block with a container that has:
+  - data-block-id="{block.id}"
+- The ENTIRE block card must be inside this wrapper.
+
+B) Selection handling (robust)
+- On the block wrapper:
+  - Use onPointerDown to set selectedId = block.id
+  - Ignore pointer events from:
+    - buttons
+    - inputs
+    - textareas
+    - contenteditable
+    - drag handles
+
+C) Hover behavior (desktop)
+- On desktop (hover: hover):
+  - onMouseEnter → set hoveredId = block.id
+  - onMouseLeave → clear hoveredId
+- Actions must show when:
+  - hoveredId === block.id OR selectedId === block.id
+
+D) Mobile behavior
+- No hover logic.
+- Actions show ONLY when selectedId === block.id.
+- Touch interactions must not block scrolling.
+
+E) Action visibility rules
+- Desktop: show actions on hover OR selection.
+- Mobile: show actions on selection only.
+- Never rely on hover-only CSS.
+
+====================
+3) SAFE “CLICK OUTSIDE TO DESELECT”
+====================
+
+Implement ONE document-level pointerdown handler in the editor.
+
+Rules:
+- If pointerdown target is INSIDE:
+  - a block wrapper ([data-block-id])
+  - inspector panel ([data-inspector-panel])
+  - bottom sheet ([data-bottom-sheet])
+  → DO NOTHING.
+- Otherwise:
+  - setSelectedId(null)
+
+Safety guards:
+- Always check:
+  - if (!(e.target instanceof Element)) return;
+- Ensure the listener:
+  - is added once
+  - is cleaned up on unmount
+
+This logic must NOT interfere with:
+- block hover
+- block re-selection
+- delete/duplicate button clicks
+- TipTap editing
+
+====================
+4) GRID SIMPLIFICATION (CONFIRMED)
+====================
+
+Keep ONLY uniform grid.
+
+data.grid = {
+  urls: string[],
+  columnsDesktop: number,  // 2–4
+  columnsMobile: number,   // 1–2
+  gap: number
+}
+
+Remove completely:
+- grid presets
+- comparison modes
+- highlight logic
+- masonry
+- any preset selector UI
+
+Grid purpose:
+- Group related images only.
+
+====================
+5) MOBILE SCROLLING (MUST NOT BREAK)
+====================
+
+Admin pages must scroll like a native feed (Instagram-like):
+
+- Single scroll container (editor canvas)
+- height: 100dvh
+- overflow-y: auto
+- -webkit-overflow-scrolling: touch
+- No global overflow:hidden
+- No preventDefault on touchmove except on drag handles
+- Bottom sheets must not steal scroll when closed
+
+====================
+6) GUARANTEES / ACCEPTANCE CRITERIA
+====================
+
+After applying this:
+- No Draft button anywhere.
+- Save immediately persists project.
+- Clicking empty space deselects blocks.
+- Hovering or clicking a block again ALWAYS shows delete/duplicate.
+- No runtime crashes.
+- Mobile scrolling works naturally.
+- Public site remains unchanged.
+
+DELIVERABLE:
+- Stable admin editor with predictable block actions and simplified UX.

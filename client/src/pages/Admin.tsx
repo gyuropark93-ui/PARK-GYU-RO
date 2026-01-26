@@ -5,8 +5,7 @@ import { useProjects, useProject, useCreateProject, useUpdateProject, useDeleteP
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Pencil, Trash2, LogOut, Plus, ArrowLeft, Image, Type, Video, Grid3X3, GripVertical, ChevronUp, ChevronDown, Save, X, Minus, Square, Check, Copy } from 'lucide-react';
+import { Loader2, Pencil, Trash2, LogOut, Plus, ArrowLeft, Image, Type, Video, Grid3X3, GripVertical, ChevronUp, ChevronDown, Save, X, Minus, Square, Copy } from 'lucide-react';
 import type { Project, ProjectBlock, BlockType, ImageBlockData, TextBlockData, VideoBlockData, GridBlockData, DividerBlockData, SpacerBlockData } from '@/lib/supabase';
 import { TipTapEditor } from '@/components/TipTapEditor';
 import {
@@ -105,8 +104,7 @@ function ProjectList() {
       const newProject = await createProject.mutateAsync({
         title: 'Untitled',
         year: 2026,
-        cover_url: null,
-        status: 'draft'
+        cover_url: null
       });
       navigate(`/admin/projects/${newProject.id}`);
     } catch (err) {
@@ -200,14 +198,9 @@ function ProjectList() {
                         </Button>
                       </div>
                     </div>
-                    <div className="p-4 flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <h3 className="font-medium text-white truncate">{project.title}</h3>
-                        <p className="text-sm text-zinc-500">{project.year}</p>
-                      </div>
-                      <Badge variant={project.status === 'published' ? 'default' : 'secondary'} className="flex-shrink-0">
-                        {project.status === 'published' ? 'Published' : 'Draft'}
-                      </Badge>
+                    <div className="p-4">
+                      <h3 className="font-medium text-white truncate">{project.title}</h3>
+                      <p className="text-sm text-zinc-500">{project.year}</p>
                     </div>
                   </div>
                 ))}
@@ -231,15 +224,19 @@ interface BlockEditorProps {
   isLast: boolean;
   isMobile: boolean;
   isSelected: boolean;
+  isHovered: boolean;
   onSelect: () => void;
+  onHover: (hovered: boolean) => void;
   dragHandleProps?: {
     attributes: ReturnType<typeof useSortable>['attributes'];
     listeners: ReturnType<typeof useSortable>['listeners'];
   };
 }
 
-function BlockEditor({ block, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveDown, isFirst, isLast, isMobile, isSelected, onSelect, dragHandleProps }: BlockEditorProps) {
+function BlockEditor({ block, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveDown, isFirst, isLast, isMobile, isSelected, isHovered, onSelect, onHover, dragHandleProps }: BlockEditorProps) {
   const [uploading, setUploading] = useState(false);
+  
+  const showActions = isMobile ? isSelected : (isSelected || isHovered);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -278,15 +275,21 @@ function BlockEditor({ block, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveD
 
   const textData = block.data as TextBlockData;
 
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, textarea, [contenteditable], .tiptap-editor, [data-drag-handle]')) return;
+    onSelect();
+  };
+
   return (
     <div 
-      className={`group bg-zinc-900/50 rounded-xl transition-all cursor-pointer ${isSelected ? 'ring-2 ring-blue-500' : 'hover:ring-1 hover:ring-zinc-700'}`}
-      onClick={(e) => {
-        if ((e.target as HTMLElement).closest('input, textarea, button, [contenteditable], .tiptap-editor')) return;
-        onSelect();
-      }}
+      data-block-id={block.id}
+      className={`bg-zinc-900/50 rounded-xl transition-all cursor-pointer ${isSelected ? 'ring-2 ring-blue-500' : isHovered ? 'ring-1 ring-zinc-600' : ''}`}
+      onPointerDown={handlePointerDown}
+      onMouseEnter={() => !isMobile && onHover(true)}
+      onMouseLeave={() => !isMobile && onHover(false)}
     >
-      {isSelected && (
+      {showActions && (
         <div className="flex items-center gap-1 px-3 py-2 bg-zinc-800/80 border-b border-zinc-700 rounded-t-xl">
           {!isMobile && dragHandleProps && (
             <div 
@@ -438,9 +441,9 @@ function BlockEditor({ block, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveD
   );
 }
 
-interface SortableBlockEditorProps extends Omit<BlockEditorProps, 'dragHandleProps'> {
+type SortableBlockEditorProps = Omit<BlockEditorProps, 'dragHandleProps'> & {
   id: string;
-}
+};
 
 function SortableBlockEditor(props: SortableBlockEditorProps) {
   const {
@@ -533,16 +536,16 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
   const [title, setTitle] = useState('Untitled');
   const [year, setYear] = useState('2026');
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
-  const [status, setStatus] = useState<'draft' | 'published'>('draft');
   const [localBlocks, setLocalBlocks] = useState<ProjectBlock[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
   const [showMobileAddMenu, setShowMobileAddMenu] = useState(false);
   
-  const initialDataRef = useRef<{ title: string; year: string; coverUrl: string | null; status: 'draft' | 'published' } | null>(null);
+  const initialDataRef = useRef<{ title: string; year: string; coverUrl: string | null } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -557,12 +560,10 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
       setTitle(existingProject.title);
       setYear(existingProject.year.toString());
       setCoverUrl(existingProject.cover_url);
-      setStatus(existingProject.status || 'draft');
       initialDataRef.current = {
         title: existingProject.title,
         year: existingProject.year.toString(),
-        coverUrl: existingProject.cover_url,
-        status: existingProject.status || 'draft'
+        coverUrl: existingProject.cover_url
       };
     }
   }, [existingProject]);
@@ -576,10 +577,9 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
     const changed = 
       title !== initialDataRef.current.title ||
       year !== initialDataRef.current.year ||
-      coverUrl !== initialDataRef.current.coverUrl ||
-      status !== initialDataRef.current.status;
+      coverUrl !== initialDataRef.current.coverUrl;
     setHasUnsavedChanges(changed);
-  }, [title, year, coverUrl, status]);
+  }, [title, year, coverUrl]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -733,9 +733,9 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
     try {
       await updateProject.mutateAsync({
         id: projectId,
-        updates: { title, year: parseInt(year), cover_url: coverUrl, status }
+        updates: { title, year: parseInt(year), cover_url: coverUrl }
       });
-      initialDataRef.current = { title, year, coverUrl, status };
+      initialDataRef.current = { title, year, coverUrl };
       setHasUnsavedChanges(false);
     } catch (err) {
       console.error('Save failed:', err);
@@ -751,15 +751,15 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
     navigate('/admin');
   };
 
-  const togglePublish = async () => {
-    const newStatus = status === 'published' ? 'draft' : 'published';
-    setStatus(newStatus);
-    await updateProject.mutateAsync({
-      id: projectId,
-      updates: { status: newStatus }
-    });
-    initialDataRef.current = { ...initialDataRef.current!, status: newStatus };
-  };
+  useEffect(() => {
+    const handleClickOutside = (e: PointerEvent) => {
+      if (!(e.target instanceof Element)) return;
+      if (e.target.closest('[data-block-id], [data-inspector-panel], [data-bottom-sheet]')) return;
+      setSelectedBlockId(null);
+    };
+    document.addEventListener('pointerdown', handleClickOutside);
+    return () => document.removeEventListener('pointerdown', handleClickOutside);
+  }, []);
 
   if (loadingProject || loadingBlocks) {
     return (
@@ -812,16 +812,6 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
             </SelectContent>
           </Select>
 
-          <Badge 
-            variant={status === 'published' ? 'default' : 'secondary'} 
-            className="cursor-pointer flex-shrink-0 hidden sm:flex"
-            onClick={togglePublish}
-            data-testid="badge-status"
-          >
-            {status === 'published' ? <Check className="w-3 h-3 mr-1" /> : null}
-            {status === 'published' ? 'Published' : 'Draft'}
-          </Badge>
-
           {hasUnsavedChanges && (
             <span className="text-xs text-amber-500 hidden md:block flex-shrink-0">Unsaved</span>
           )}
@@ -843,7 +833,6 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
           ref={canvasRef}
           className="flex-1 overflow-y-auto overscroll-contain pb-24 md:pb-8"
           style={{ WebkitOverflowScrolling: 'touch' }}
-          onClick={() => setSelectedBlockId(null)}
         >
           <div className="max-w-3xl mx-auto p-4 md:p-8 space-y-2">
             <div 
@@ -905,7 +894,9 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
                         isLast={index === localBlocks.length - 1}
                         isMobile={isMobile}
                         isSelected={selectedBlockId === block.id}
+                        isHovered={hoveredBlockId === block.id}
                         onSelect={() => setSelectedBlockId(block.id)}
+                        onHover={(hovered) => setHoveredBlockId(hovered ? block.id : null)}
                       />
                       <AddBlockButton onAdd={(type) => addBlock(type, index + 1)} position={index + 1} />
                     </div>
@@ -926,7 +917,9 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
                     isLast={index === localBlocks.length - 1}
                     isMobile={isMobile}
                     isSelected={selectedBlockId === block.id}
+                    isHovered={hoveredBlockId === block.id}
                     onSelect={() => setSelectedBlockId(block.id)}
+                    onHover={(hovered) => setHoveredBlockId(hovered ? block.id : null)}
                   />
                   <AddBlockButton onAdd={(type) => addBlock(type, index + 1)} position={index + 1} />
                 </div>
@@ -942,7 +935,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
           </div>
         </main>
 
-        <aside className="hidden md:flex flex-col w-64 border-l border-zinc-800 bg-zinc-900/50 flex-shrink-0">
+        <aside className="hidden md:flex flex-col w-64 border-l border-zinc-800 bg-zinc-900/50 flex-shrink-0" data-inspector-panel>
           <div className="p-4 border-b border-zinc-800">
             <p className="text-xs text-zinc-500 uppercase tracking-wide">Add Content</p>
           </div>
@@ -964,7 +957,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
         </aside>
       </div>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 z-30">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 z-30" data-bottom-sheet>
         <div className="flex gap-1 p-2 justify-center">
           {blockTypes.slice(0, 4).map(({ type, icon: Icon }) => (
             <Button
@@ -1023,8 +1016,7 @@ function NewProjectRedirect() {
         const newProject = await createProject.mutateAsync({
           title: 'Untitled',
           year: 2026,
-          cover_url: null,
-          status: 'draft'
+          cover_url: null
         });
         navigate(`/admin/projects/${newProject.id}`, { replace: true });
       } catch (err) {
