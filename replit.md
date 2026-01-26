@@ -61,7 +61,9 @@ shared/           # Shared code between client/server
 
 ### Database
 - **PostgreSQL**: Primary database, connection via `DATABASE_URL` environment variable
-- **Supabase**: Used for the `projects` table with fields: id (uuid), year, title, thumbnail_url, video_url (optional), description, created_at
+- **Supabase**: Used for project data with two tables:
+  - `projects`: id (uuid), year (int), title (text), cover_url (text), created_at (timestamp)
+  - `project_blocks`: id (uuid), project_id (uuid FK), sort_order (int), type (text: image|text|video|grid), data (jsonb), created_at (timestamp)
 
 ### Authentication & Storage
 - **Supabase Auth**: Email/password authentication for admin access
@@ -76,9 +78,13 @@ shared/           # Shared code between client/server
 
 ### January 26, 2026
 - Added interactive subway platform year navigation with video transitions
-- Implemented year-based project browsing (click year indicator to view projects)
-- Added Admin CMS at /admin route for managing projects
-- Supabase integration for projects table, authentication, and storage
+- Central "CLICK HERE" button opens project overlay for current year (year indicator is display-only)
+- Behance-style Admin CMS with project builder:
+  - /admin - Project list grouped by year
+  - /admin/projects/new - Create new project
+  - /admin/projects/:id - Project builder with content blocks
+- Content blocks: Image, Text, Video, and Image Grid with reordering
+- Supabase integration for projects and project_blocks tables
 - Forward/backward transition videos with alpha transparency support
 - Year switches at midpoint of transition videos (45% for forward, 50% for backward)
 
