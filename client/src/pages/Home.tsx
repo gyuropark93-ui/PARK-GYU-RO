@@ -62,11 +62,12 @@ export default function Home() {
 
   const handleTimeUpdate = () => {
     const video = videoRef.current;
-    if (!video || hasSwappedRef.current || targetYear === null) return;
+    if (!video || hasSwappedRef.current || targetYear === null || !transitionType) return;
 
     const progress = video.currentTime / video.duration;
+    const threshold = transitionType === "forward" ? 0.45 : 0.5;
     
-    if (progress >= 0.5) {
+    if (progress >= threshold) {
       hasSwappedRef.current = true;
       setCurrentYear(targetYear);
       logVisit.mutate({
