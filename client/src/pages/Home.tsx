@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { NavButton } from "@/components/NavButton";
 import { YearIndicator } from "@/components/YearIndicator";
+import { YearProjectsPanel } from "@/components/YearProjectsPanel";
 import { useLogVisit } from "@/hooks/use-visit";
 
 const MIN_YEAR = 2023;
@@ -11,6 +12,7 @@ export default function Home() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionType, setTransitionType] = useState<"forward" | "back" | null>(null);
   const [targetYear, setTargetYear] = useState<number | null>(null);
+  const [showProjects, setShowProjects] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const hasSwappedRef = useRef(false);
@@ -24,7 +26,7 @@ export default function Home() {
   }, []);
 
   const handleTransition = (direction: "forward" | "back") => {
-    if (isTransitioning) return;
+    if (isTransitioning || showProjects) return;
 
     if (direction === "forward" && currentYear >= MAX_YEAR) return;
     if (direction === "back" && currentYear <= MIN_YEAR) return;
@@ -125,7 +127,7 @@ export default function Home() {
           <NavButton
             direction="left"
             visible={currentYear > MIN_YEAR}
-            disabled={isTransitioning}
+            disabled={isTransitioning || showProjects}
             onClick={() => handleTransition("back")}
           />
         </div>
@@ -134,16 +136,34 @@ export default function Home() {
           <NavButton
             direction="right"
             visible={currentYear < MAX_YEAR}
-            disabled={isTransitioning}
+            disabled={isTransitioning || showProjects}
             onClick={() => handleTransition("forward")}
           />
         </div>
       </div>
 
-      {/* Year Indicator (z-30) */}
+      {/* Year Indicator (z-30) - Clickable to open projects */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30">
-        <YearIndicator currentYear={currentYear} />
+        <button
+          onClick={() => !isTransitioning && setShowProjects(true)}
+          disabled={isTransitioning}
+          className="focus:outline-none focus:ring-2 focus:ring-primary/50 rounded-full transition-transform hover:scale-105 active:scale-95"
+          data-testid="button-view-projects"
+        >
+          <YearIndicator currentYear={currentYear} />
+        </button>
+        <p className="text-center text-xs text-muted-foreground mt-2 opacity-70">
+          Click to view projects
+        </p>
       </div>
+
+      {/* Year Projects Panel */}
+      {showProjects && (
+        <YearProjectsPanel
+          year={currentYear}
+          onClose={() => setShowProjects(false)}
+        />
+      )}
     </div>
   );
 }

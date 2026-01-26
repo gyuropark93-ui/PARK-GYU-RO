@@ -1,0 +1,136 @@
+Implement year-based project pages with admin CMS functionality.
+Design must match current cinematic subway platform concept.
+
+GOAL:
+Visitors can browse projects by year.
+Only admin (me) can add/edit/delete projects via admin page.
+No login required for normal visitors.
+
+TECH STACK:
+- React frontend (existing project)
+- Supabase for database, auth, and storage
+
+FEATURES TO IMPLEMENT:
+
+====================
+1. DATA MODEL (Supabase)
+====================
+
+Create table: projects
+
+Fields:
+- id (uuid, primary key)
+- year (int)
+- title (text)
+- thumbnail_url (text)
+- video_url (text, optional)
+- description (text)
+- created_at (timestamp)
+
+RLS rules:
+- Public: SELECT allowed
+- Authenticated users: INSERT, UPDATE, DELETE allowed
+
+====================
+2. PUBLIC FLOW
+====================
+
+A. From subway homepage:
+- Clicking year opens year project view (not full page reload, SPA style)
+- Background subway scene remains visible
+
+B. Year project panel:
+- Glass / blur panel slides or fades in
+- Grid of project cards
+
+Card design:
+- Rounded large cards
+- Thumbnail image
+- Title text
+- Subtle hover lift
+
+C. Card click:
+- Opens modal overlay (not page change)
+- Shows:
+  - Embedded video (if video_url exists)
+  - Large image (thumbnail)
+  - Title
+  - Description text
+- Close button returns to year panel
+
+====================
+3. ADMIN PAGE
+====================
+
+Route: /admin
+
+Behavior:
+- Requires Supabase login
+- If not logged in, show login form
+
+Admin UI:
+- Form to add new project:
+  - Year (dropdown)
+  - Title
+  - Thumbnail upload (to Supabase Storage)
+  - Video URL (optional)
+  - Description textarea
+  - Save button
+
+- Project list:
+  - Shows all projects
+  - Edit button
+  - Delete button
+
+Editing:
+- Loads project data into form
+- Save updates DB
+
+After save/delete:
+- Public pages update automatically from DB
+
+====================
+4. UI STYLE RULES
+====================
+
+Must match subway cinematic theme:
+- Glassmorphism panels
+- Soft blur backgrounds
+- Dark environment tones
+- Apple-like minimal UI
+- No heavy borders
+- Motion easing on panels and modals
+
+Do not redesign existing subway homepage visuals.
+
+====================
+5. ARCHITECTURE
+====================
+
+Components:
+- SubwayHome (existing)
+- YearProjectsPanel
+- ProjectCard
+- ProjectModal
+- AdminLogin
+- AdminDashboard
+- ProjectForm
+
+Data:
+- All project data loaded from Supabase
+- No hardcoded project arrays
+
+====================
+6. DO NOT IMPLEMENT YET
+====================
+
+- No SEO pages
+- No server-side rendering
+- No detail routing pages
+- Modal only for project details
+
+====================
+FINAL REQUIREMENT
+
+After initial coding, all future project updates must be possible
+ONLY through the admin page without touching code.
