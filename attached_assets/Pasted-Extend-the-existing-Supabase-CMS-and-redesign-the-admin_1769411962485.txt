@@ -1,0 +1,134 @@
+Extend the existing Supabase CMS and redesign the /admin interface into a Behance-like dark project builder.
+Behance UI screenshots are provided and must be used STRICTLY as visual and UX reference
+for layout structure, spacing, density, and content builder flow.
+Do NOT copy branding, colors, or exact styling.
+Adapt the UX to the existing dark, minimal, subway-themed, Apple-like design.
+
+Public-facing site behavior must remain unchanged.
+
+====================
+1. DATABASE (Supabase)
+====================
+
+Keep existing `projects` table with fields:
+- id (uuid, primary key)
+- year (int)
+- title (text)
+- cover_url (text)
+- created_at (timestamp)
+
+Create new table: `project_blocks`
+
+Fields:
+- id (uuid, primary key)
+- project_id (uuid, foreign key -> projects.id, cascade delete)
+- sort_order (int)
+- type (text) // "image" | "text" | "video" | "grid"
+- data (jsonb)
+- created_at (timestamp)
+
+RLS:
+- Enable RLS on both tables.
+- Public users: SELECT allowed.
+- Authenticated users: INSERT, UPDATE, DELETE allowed.
+
+====================
+2. ADMIN ROUTES
+====================
+
+Routes:
+- /admin → project list
+- /admin/projects/new → create project
+- /admin/projects/:id → project builder
+
+Admin access:
+- Require Supabase authentication.
+- If not logged in, show login screen.
+- No public navigation link to admin.
+
+====================
+3. ADMIN UI – PROJECT LIST
+====================
+
+- Dark UI.
+- Projects grouped by year.
+- Each project card shows:
+  - cover image
+  - title
+  - year
+- Actions:
+  - Edit
+  - Delete
+- Primary action: “New Project”
+
+====================
+4. ADMIN UI – PROJECT BUILDER (Behance-like)
+====================
+
+Layout (based on Behance builder UX reference):
+- Top bar:
+  - Editable project title
+  - Year selector
+  - Save button
+  - Back to list
+- Center canvas:
+  - Scrollable page preview
+  - Content blocks stacked vertically
+- Right sidebar (“Add Content”):
+  - Image
+  - Text
+  - Video (embed URL)
+  - Image Grid
+
+Block behavior:
+- Each block has:
+  - Drag handle (reorder)
+  - Edit
+  - Delete
+- Drag & drop updates sort_order.
+- Save persists blocks to `project_blocks`.
+
+Block definitions:
+- Image:
+  - Upload to Supabase Storage
+  - Store URL in data.url
+- Text:
+  - Multiline editor
+  - Store content in data.markdown
+- Video:
+  - Input YouTube/Vimeo embed URL
+  - Store in data.embedUrl
+- Grid:
+  - Multiple image URLs
+  - Store array in data.urls
+
+====================
+5. VISUAL STYLE
+====================
+
+- Dark theme only.
+- Behance-like UX structure, NOT branding.
+- Clean, minimal, Apple-like UI.
+- Soft cards, rounded corners, subtle dividers.
+- Right sidebar icons + labels similar to Behance content palette.
+- On mobile:
+  - Sidebar becomes bottom drawer.
+  - Reordering uses up/down buttons instead of drag.
+
+====================
+6. PUBLIC SITE
+====================
+
+- Do NOT change:
+  - Subway platform homepage
+  - Year navigation & transitions
+  - VIEW PROJECTS button behavior
+- CMS expansion is admin-only for now and for future detail rendering.
+
+====================
+FINAL REQUIREMENT
+====================
+
+After implementation:
+- All project content (images, text, videos) must be editable from admin only.
+- No future code changes should be required to add or update projects.

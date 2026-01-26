@@ -14,7 +14,7 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
     >
       <div className="aspect-video w-full overflow-hidden">
         <img
-          src={project.thumbnail_url}
+          src={project.cover_url}
           alt={project.title}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
@@ -23,9 +23,6 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
         <h3 className="font-display text-lg font-semibold text-foreground truncate">
           {project.title}
         </h3>
-        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-          {project.description}
-        </p>
       </div>
     </button>
   );
