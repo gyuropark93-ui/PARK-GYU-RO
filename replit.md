@@ -76,14 +76,21 @@ shared/           # Shared code between client/server
 
 ## Recent Changes
 
-### January 26, 2026
+### January 26, 2026 (Latest)
+- **Removed Draft/Published status** - Projects save immediately and are always visible on public site
+- **Fixed block action buttons** - Actions now show on hover OR selection (desktop), selection only (mobile)
+- **Improved click-outside-to-deselect** - Safe document-level handler that respects blocks, inspector panel, and bottom sheet
+- **Simplified grid blocks** - Uniform grid only with columnsDesktop, columnsMobile, gap settings
+- **Mobile scrolling** - Native feed-like scrolling with 100dvh, overflow-y-auto, overscroll-contain
+
+### January 26, 2026 (Earlier)
 - Added interactive subway platform year navigation with video transitions
 - Central "CLICK HERE" button opens project overlay for current year (year indicator is display-only)
 - Behance-style Admin CMS with project builder:
   - /admin - Project list grouped by year
   - /admin/projects/new - Create new project
   - /admin/projects/:id - Project builder with content blocks
-- Content blocks: Image, Text, Video, and Image Grid with reordering
+- Content blocks: Image, Text, Video, Grid, Divider, Spacer with reordering
 - Supabase integration for projects and project_blocks tables
 - Forward/backward transition videos with alpha transparency support
 - Year switches at midpoint of transition videos (45% for forward, 50% for backward)
