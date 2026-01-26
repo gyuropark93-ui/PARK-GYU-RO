@@ -378,8 +378,10 @@ function ProjectBuilder({ projectId }: { projectId?: string }) {
   }, [existingProject]);
 
   useEffect(() => {
-    setLocalBlocks(blocks);
-  }, [blocks]);
+    if (blocks.length > 0 || localBlocks.length === 0) {
+      setLocalBlocks(blocks);
+    }
+  }, [JSON.stringify(blocks.map(b => b.id))]);
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

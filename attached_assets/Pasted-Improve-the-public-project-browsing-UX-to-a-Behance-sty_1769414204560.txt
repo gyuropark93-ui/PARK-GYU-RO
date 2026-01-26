@@ -1,0 +1,74 @@
+Improve the public project browsing UX to a Behance-style scroll detail view inside the existing overlay.
+Keep the subway homepage and year transitions unchanged.
+
+GOAL:
+- "VIEW PROJECTS" opens the year project overlay (already working).
+- Project cards show a clean grid.
+- Clicking a card transitions to a scroll-based detail view (Behance-like) WITHIN the same overlay (no route change).
+- Add polished modal interactions and responsive behavior.
+
+REQUIREMENTS
+
+1) Overlay / Modal UX polish
+- When overlay opens: fade + slight scale-in animation.
+- When overlay closes: reverse animation.
+- Close methods:
+  - X button (top-right)
+  - Click outside the overlay (backdrop click)
+  - ESC key
+- When overlay is open: lock background scrolling (body overflow hidden).
+- Backdrop must be slightly darkened and blurred to keep the subway visible but subdued.
+
+2) Project Cards Grid (list view)
+- Consistent thumbnail aspect ratio (e.g., 16:9) using object-fit: cover.
+- Title always readable: add subtle bottom gradient overlay on thumbnail.
+- Hover (desktop): slight lift + shadow + thumbnail zoom.
+- Tap feedback (mobile): subtle scale or highlight.
+- Responsive:
+  - Desktop: 3–4 columns depending on width
+  - Tablet: 2 columns
+  - Mobile: 1 column with larger cards
+
+3) In-overlay Detail View (Behance-style, scroll-based)
+- On card click:
+  - Transition from grid view to detail view inside the overlay (no page reload).
+  - The overlay content becomes a vertical scroll page.
+- Detail header:
+  - Sticky top bar inside overlay with:
+    - Back button: "BACK TO PROJECTS"
+    - Project title
+    - Close (X)
+- Detail body layout:
+  - Hero section at top:
+    - If a video block exists: show video embed as hero
+    - Otherwise: show cover image as hero
+  - Then render blocks in order:
+    - image block: full-width image, optional caption
+    - grid block: responsive grid (2–3 columns desktop, 1–2 columns mobile)
+    - text block: clean readable typography, max width, good line-height
+    - video block: embedded iframe with correct responsive aspect ratio
+  - Description text (if exists) should appear near the top under the title, in a readable column width.
+
+4) Data usage
+- Use existing Supabase data:
+  - project list for the year from projects table
+  - block content from project_blocks table
+- Ensure blocks are rendered by sort_order.
+- No hardcoded project arrays.
+
+5) Performance / Quality
+- Lazy-load images in the overlay.
+- Preload the first visible thumbnails when opening the overlay.
+- Ensure embeds and images do not overflow on mobile.
+
+6) Do NOT change
+- Subway background rendering
+- Year transition overlay video logic
+- Admin pages and builder
+
+DELIVERABLE
+- Updated overlay components to support two modes:
+  - List mode (cards grid)
+  - Detail mode (scroll page)
+- Smooth transitions between modes
+- Mobile-friendly layout and interactions
