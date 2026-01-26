@@ -439,10 +439,8 @@ function ProjectBuilder({ projectId }: { projectId?: string }) {
   }, [existingProject]);
 
   useEffect(() => {
-    if (blocks.length > 0 || localBlocks.length === 0) {
-      setLocalBlocks(blocks);
-    }
-  }, [JSON.stringify(blocks.map(b => b.id))]);
+    setLocalBlocks(blocks);
+  }, [JSON.stringify(blocks.map(b => `${b.id}:${b.sort_order}`))]);
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -497,11 +495,12 @@ function ProjectBuilder({ projectId }: { projectId?: string }) {
 
   const moveBlock = async (index: number, direction: 'up' | 'down') => {
     if (!projectId) return;
-    const newBlocks = [...blocks];
+    const newBlocks = [...localBlocks];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= newBlocks.length) return;
     
     [newBlocks[index], newBlocks[targetIndex]] = [newBlocks[targetIndex], newBlocks[index]];
+    setLocalBlocks(newBlocks);
     
     const updates = newBlocks.map((block, idx) => ({ id: block.id, sort_order: idx }));
     await reorderBlocks.mutateAsync({ projectId, blocks: updates });
@@ -523,17 +522,17 @@ function ProjectBuilder({ projectId }: { projectId?: string }) {
     
     if (!over || active.id === over.id || !projectId) return;
 
-    const oldIndex = blocks.findIndex((b) => b.id === active.id);
-    const newIndex = blocks.findIndex((b) => b.id === over.id);
+    const oldIndex = localBlocks.findIndex((b) => b.id === active.id);
+    const newIndex = localBlocks.findIndex((b) => b.id === over.id);
 
     if (oldIndex === -1 || newIndex === -1) return;
 
-    const newBlocks = arrayMove(blocks, oldIndex, newIndex);
+    const newBlocks = arrayMove(localBlocks, oldIndex, newIndex);
     setLocalBlocks(newBlocks);
 
     const updates = newBlocks.map((block, idx) => ({ id: block.id, sort_order: idx }));
     await reorderBlocks.mutateAsync({ projectId, blocks: updates });
-  }, [blocks, projectId, reorderBlocks]);
+  }, [localBlocks, projectId, reorderBlocks]);
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -713,10 +712,10 @@ function ProjectBuilder({ projectId }: { projectId?: string }) {
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={blocks.map((b) => b.id)}
+                  items={localBlocks.map((b) => b.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  {blocks.map((block, index) => (
+                  {localBlocks.map((block, index) => (
                     <SortableBlockEditor
                       key={block.id}
                       id={block.id}
@@ -726,14 +725,14 @@ function ProjectBuilder({ projectId }: { projectId?: string }) {
                       onMoveUp={() => moveBlock(index, 'up')}
                       onMoveDown={() => moveBlock(index, 'down')}
                       isFirst={index === 0}
-                      isLast={index === blocks.length - 1}
+                      isLast={index === localBlocks.length - 1}
                       isMobile={isMobile}
                     />
                   ))}
                 </SortableContext>
               </DndContext>
             ) : (
-              blocks.map((block, index) => (
+              localBlocks.map((block, index) => (
                 <BlockEditor
                   key={block.id}
                   block={block}
@@ -742,13 +741,13 @@ function ProjectBuilder({ projectId }: { projectId?: string }) {
                   onMoveUp={() => moveBlock(index, 'up')}
                   onMoveDown={() => moveBlock(index, 'down')}
                   isFirst={index === 0}
-                  isLast={index === blocks.length - 1}
+                  isLast={index === localBlocks.length - 1}
                   isMobile={isMobile}
                 />
               ))
             )}
 
-            {blocks.length === 0 && projectId && (
+            {localBlocks.length === 0 && projectId && (
               <div className="text-center py-12 text-zinc-600">
                 <p className="mb-2">No content blocks yet</p>
                 <p className="text-sm">Use the sidebar to add content</p>
