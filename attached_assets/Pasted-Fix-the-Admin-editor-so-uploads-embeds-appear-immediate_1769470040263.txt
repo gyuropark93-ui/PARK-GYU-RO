@@ -1,0 +1,80 @@
+Fix the Admin editor so uploads/embeds appear immediately WITHOUT refresh.
+Currently images (non-thumbnail), grid images, and video embeds only appear after refresh or adding another block.
+Implement immediate UI updates (optimistic/local state) for:
+1) Image block uploads
+2) Grid block image uploads
+3) YouTube/Vimeo embed preview
+
+KEEP the global Save/Unsaved workflow:
+- Storage uploads can happen immediately
+- DB writes to project_blocks must happen only when pressing Save
+
+====================
+A) Make blocks state the single source of truth in the editor
+====================
+- Maintain local state: editorBlocks (array of blocks).
+- Render the canvas from editorBlocks, NOT from query data directly.
+- When query loads initial blocks, set editorBlocks once.
+
+====================
+B) Image block: instant update after upload
+====================
+When user uploads an image for an Image block:
+1) Immediately set that block into a "uploading" state in editorBlocks:
+   - data.image = { url: '', uploading: true, progress?: number }
+2) Call uploadImage(file, 'images')
+3) On success:
+   - Update editorBlocks in-place for that block id:
+     data.image.url = returnedPublicUrl
+     data.image.uploading = false
+   - Mark editor as dirty (isDirty=true)
+4) On error:
+   - data.image.uploading=false
+   - show inline error toast
+No refetch required to see the result.
+
+====================
+C) Grid block: instant update after each file upload
+====================
+Grid model: data.grid = { urls: string[], columnsDesktop, columnsMobile, gap }
+When user selects multiple files:
+1) Immediately add temporary placeholders to urls (e.g., 'uploading:<uuid>') so user sees items appear
+2) Upload files sequentially or with limited concurrency (max 2 at a time) to avoid mobile stalls
+3) Replace each placeholder with the final public URL as soon as each upload finishes
+4) Mark isDirty=true
+No refresh/refetch required.
+
+====================
+D) Video block: instant paste + instant embedUrl + preview
+====================
+Video model: data.video = { originalUrl, embedUrl, aspect, lazyPreview }
+- Make the input CONTROLLED (value from state).
+- onChange/onPaste:
+  - set originalUrl immediately in editorBlocks
+  - compute embedUrl via toEmbedUrl(originalUrl)
+  - set embedUrl immediately in editorBlocks
+  - mark isDirty=true
+Preview:
+- Render iframe using embedUrl (never originalUrl).
+- If lazyPreview is on, show “Load preview” button; otherwise show immediately.
+
+====================
+E) Save / Unsaved integration
+====================
+- Any time editorBlocks changes (image upload completed, grid urls updated, video url changed), set isDirty=true.
+- Save persists BOTH:
+  - project meta (title/year/cover_url)
+  - blocks (upsert + delete + reorder) from editorBlocks
+- After successful Save, set isDirty=false and show “Saved”.
+
+====================
+F) IMPORTANT: Do not rely on refetch to update UI
+====================
+- Remove patterns like "invalidateQueries to see changes" after uploads/embeds.
+- Refetch is allowed only after Save, or when entering the editor.
+
+DELIVERABLES
+- Uploading images in Image block shows instantly.
+- Uploading images in Grid shows instantly (progress/placeholder optional).
+- Pasting YouTube/Vimeo URL updates input + embedUrl + preview instantly.
+- No need to refresh or add another block to see changes.

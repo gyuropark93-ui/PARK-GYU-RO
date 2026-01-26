@@ -637,12 +637,15 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [hasBlockChanges, setHasBlockChanges] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
   const [showMobileAddMenu, setShowMobileAddMenu] = useState(false);
+  const [deletedBlockIds, setDeletedBlockIds] = useState<string[]>([]);
   
   const initialDataRef = useRef<{ title: string; year: string; coverUrl: string | null } | null>(null);
+  const initialBlocksRef = useRef<ProjectBlock[] | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -666,8 +669,11 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
   }, [existingProject]);
 
   useEffect(() => {
-    setLocalBlocks(blocks);
-  }, [JSON.stringify(blocks.map(b => `${b.id}:${b.sort_order}`))]);
+    if (initialBlocksRef.current === null && !loadingBlocks) {
+      setLocalBlocks(blocks);
+      initialBlocksRef.current = blocks;
+    }
+  }, [blocks, loadingBlocks]);
 
   useEffect(() => {
     if (!initialDataRef.current) return;
@@ -680,14 +686,14 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
+      if (hasUnsavedChanges || hasBlockChanges) {
         e.preventDefault();
         e.returnValue = '';
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedChanges]);
+  }, [hasUnsavedChanges, hasBlockChanges]);
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -713,7 +719,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
         data = { json: { type: 'doc', content: [] } };
         break;
       case 'video':
-        data = { embedUrl: '' };
+        data = { originalUrl: '', embedUrl: '' };
         break;
       case 'grid':
         data = { urls: [], columnsDesktop: 3, columnsMobile: 2, gap: 8 };
@@ -728,16 +734,6 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
 
     const insertAt = atPosition ?? localBlocks.length;
     
-    if (atPosition !== undefined) {
-      const updatedBlocks = localBlocks.map((b, i) => 
-        i >= atPosition ? { ...b, sort_order: b.sort_order + 1 } : b
-      );
-      const updates = updatedBlocks.filter((b, i) => i >= atPosition).map((b) => ({ id: b.id, sort_order: b.sort_order }));
-      if (updates.length > 0) {
-        await reorderBlocks.mutateAsync({ projectId, blocks: updates });
-      }
-    }
-
     const newBlock = await createBlock.mutateAsync({
       project_id: projectId,
       type,
@@ -745,16 +741,33 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
       sort_order: insertAt,
     });
     
+    setLocalBlocks(prev => {
+      const updated = prev.map((b, i) => 
+        i >= insertAt ? { ...b, sort_order: b.sort_order + 1 } : b
+      );
+      const inserted = [...updated];
+      inserted.splice(insertAt, 0, newBlock);
+      return inserted.map((b, i) => ({ ...b, sort_order: i }));
+    });
+    
+    if (initialBlocksRef.current === null) {
+      initialBlocksRef.current = [];
+    }
+    initialBlocksRef.current = [...(initialBlocksRef.current || []), newBlock];
+    
     setSelectedBlockId(newBlock.id);
     setShowMobileAddMenu(false);
   };
 
-  const handleBlockUpdate = async (blockId: string, data: ProjectBlock['data']) => {
-    await updateBlock.mutateAsync({ id: blockId, projectId, updates: { data } });
+  const handleBlockUpdate = (blockId: string, data: ProjectBlock['data']) => {
+    setLocalBlocks(prev => prev.map(b => b.id === blockId ? { ...b, data } : b));
+    setHasBlockChanges(true);
   };
 
-  const handleBlockDelete = async (blockId: string) => {
-    await deleteBlock.mutateAsync({ id: blockId, projectId });
+  const handleBlockDelete = (blockId: string) => {
+    setLocalBlocks(prev => prev.filter(b => b.id !== blockId));
+    setDeletedBlockIds(prev => [...prev, blockId]);
+    setHasBlockChanges(true);
     if (selectedBlockId === blockId) setSelectedBlockId(null);
   };
 
@@ -762,14 +775,6 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
     const currentIndex = localBlocks.findIndex(b => b.id === block.id);
     const insertAt = currentIndex + 1;
     
-    const updatedBlocks = localBlocks.map((b, i) => 
-      i >= insertAt ? { ...b, sort_order: b.sort_order + 1 } : b
-    );
-    const updates = updatedBlocks.filter((b, i) => i >= insertAt).map((b) => ({ id: b.id, sort_order: b.sort_order }));
-    if (updates.length > 0) {
-      await reorderBlocks.mutateAsync({ projectId, blocks: updates });
-    }
-
     const newBlock = await createBlock.mutateAsync({
       project_id: projectId,
       type: block.type,
@@ -777,19 +782,32 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
       sort_order: insertAt,
     });
     
+    setLocalBlocks(prev => {
+      const updated = prev.map((b, i) => 
+        i >= insertAt ? { ...b, sort_order: b.sort_order + 1 } : b
+      );
+      const inserted = [...updated];
+      inserted.splice(insertAt, 0, newBlock);
+      return inserted.map((b, i) => ({ ...b, sort_order: i }));
+    });
+    
+    if (initialBlocksRef.current === null) {
+      initialBlocksRef.current = [];
+    }
+    initialBlocksRef.current = [...(initialBlocksRef.current || []), newBlock];
+    
     setSelectedBlockId(newBlock.id);
   };
 
-  const moveBlock = async (index: number, direction: 'up' | 'down') => {
+  const moveBlock = (index: number, direction: 'up' | 'down') => {
     const newBlocks = [...localBlocks];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= newBlocks.length) return;
     
     [newBlocks[index], newBlocks[targetIndex]] = [newBlocks[targetIndex], newBlocks[index]];
-    setLocalBlocks(newBlocks);
-    
-    const updates = newBlocks.map((block, idx) => ({ id: block.id, sort_order: idx }));
-    await reorderBlocks.mutateAsync({ projectId, blocks: updates });
+    const reordered = newBlocks.map((b, i) => ({ ...b, sort_order: i }));
+    setLocalBlocks(reordered);
+    setHasBlockChanges(true);
   };
 
   const sensors = useSensors(
@@ -803,7 +821,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
     })
   );
 
-  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     
     if (!over || active.id === over.id) return;
@@ -814,11 +832,10 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
     if (oldIndex === -1 || newIndex === -1) return;
 
     const newBlocks = arrayMove(localBlocks, oldIndex, newIndex);
-    setLocalBlocks(newBlocks);
-
-    const updates = newBlocks.map((block, idx) => ({ id: block.id, sort_order: idx }));
-    await reorderBlocks.mutateAsync({ projectId, blocks: updates });
-  }, [localBlocks, projectId, reorderBlocks]);
+    const reordered = newBlocks.map((b, i) => ({ ...b, sort_order: i }));
+    setLocalBlocks(reordered);
+    setHasBlockChanges(true);
+  }, [localBlocks]);
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -832,8 +849,34 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
         id: projectId,
         updates: { title, year: parseInt(year), cover_url: coverUrl }
       });
+      
+      for (const deletedId of deletedBlockIds) {
+        try {
+          await deleteBlock.mutateAsync({ id: deletedId, projectId });
+        } catch (err) {
+          console.warn('Block already deleted:', deletedId);
+        }
+      }
+      
+      for (const block of localBlocks) {
+        const original = initialBlocksRef.current?.find(b => b.id === block.id);
+        if (original) {
+          if (JSON.stringify(original.data) !== JSON.stringify(block.data) || 
+              original.sort_order !== block.sort_order) {
+            await updateBlock.mutateAsync({ 
+              id: block.id, 
+              projectId, 
+              updates: { data: block.data, sort_order: block.sort_order } 
+            });
+          }
+        }
+      }
+      
       initialDataRef.current = { title, year, coverUrl };
+      initialBlocksRef.current = [...localBlocks];
+      setDeletedBlockIds([]);
       setHasUnsavedChanges(false);
+      setHasBlockChanges(false);
     } catch (err) {
       console.error('Save failed:', err);
     } finally {
@@ -842,7 +885,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
   };
 
   const handleBack = () => {
-    if (hasUnsavedChanges) {
+    if (hasUnsavedChanges || hasBlockChanges) {
       if (!confirm('You have unsaved changes. Leave anyway?')) return;
     }
     navigate('/admin');
@@ -909,7 +952,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
             </SelectContent>
           </Select>
 
-          {hasUnsavedChanges && (
+          {(hasUnsavedChanges || hasBlockChanges) && (
             <span className="text-xs text-amber-500 hidden md:block flex-shrink-0">Unsaved</span>
           )}
 
