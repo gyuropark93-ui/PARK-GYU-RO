@@ -119,7 +119,7 @@ function ProjectList() {
       <header className="flex-shrink-0 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800">
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4">
-            <a href="/" className="text-zinc-400 hover:text-white transition-colors">
+            <a href="/" className="text-zinc-400 transition-colors hover-elevate p-1 rounded" data-testid="link-back-to-home">
               <ArrowLeft className="w-5 h-5" />
             </a>
             <h1 className="font-display text-xl text-white">Projects</h1>
@@ -128,14 +128,14 @@ function ProjectList() {
             <span className="text-sm text-zinc-500 hidden sm:block">{user?.email}</span>
             <Button 
               onClick={handleNewProject}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-600"
               disabled={createProject.isPending}
               data-testid="button-new-project"
             >
               {createProject.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
               New Project
             </Button>
-            <Button variant="ghost" size="icon" onClick={signOut} className="text-zinc-400 hover:text-white" data-testid="button-logout">
+            <Button variant="ghost" size="icon" onClick={signOut} data-testid="button-logout">
               <LogOut className="w-5 h-5" />
             </Button>
           </div>
@@ -303,18 +303,18 @@ function BlockEditor({ block, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveD
           </span>
           {isMobile && (
             <div className="flex gap-1">
-              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onMoveUp(); }} disabled={isFirst} className="h-8 w-8">
+              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onMoveUp(); }} disabled={isFirst} data-testid={`button-move-up-${block.id}`}>
                 <ChevronUp className="w-4 h-4" />
               </Button>
-              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onMoveDown(); }} disabled={isLast} className="h-8 w-8">
+              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onMoveDown(); }} disabled={isLast} data-testid={`button-move-down-${block.id}`}>
                 <ChevronDown className="w-4 h-4" />
               </Button>
             </div>
           )}
-          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDuplicate(); }} className="h-8 w-8 text-zinc-400 hover:text-white">
+          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDuplicate(); }} data-testid={`button-duplicate-${block.id}`}>
             <Copy className="w-4 h-4" />
           </Button>
-          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDelete(); }} className="h-8 w-8 text-zinc-400 hover:text-red-400">
+          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-red-400" data-testid={`button-delete-${block.id}`}>
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
@@ -491,7 +491,7 @@ function AddBlockButton({ onAdd, position }: AddBlockButtonProps) {
       <div className="absolute inset-x-0 top-1/2 h-px bg-zinc-800 opacity-0 group-hover/add:opacity-100 transition-opacity" />
       <button
         onClick={() => setShowMenu(!showMenu)}
-        className="relative z-10 flex items-center gap-1 px-3 py-1.5 text-xs text-zinc-500 bg-zinc-900 border border-zinc-800 rounded-full opacity-0 group-hover/add:opacity-100 hover:bg-zinc-800 hover:text-zinc-300 transition-all"
+        className="relative z-10 flex items-center gap-1 px-3 py-1.5 text-xs text-zinc-500 bg-zinc-900 border border-zinc-800 rounded-full opacity-0 group-hover/add:opacity-100 hover-elevate transition-all"
         data-testid={`button-add-at-${position}`}
       >
         <Plus className="w-3 h-3" />
@@ -786,7 +786,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
             variant="ghost"
             size="icon"
             onClick={handleBack}
-            className="text-zinc-400 hover:text-white flex-shrink-0"
+            className="flex-shrink-0"
             data-testid="button-back-to-list"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -829,7 +829,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-blue-600 hover:bg-blue-700 flex-shrink-0"
+            className="bg-blue-600 flex-shrink-0"
             data-testid="button-save-project"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 md:mr-2" />}
