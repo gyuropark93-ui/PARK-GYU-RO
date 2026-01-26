@@ -1,14 +1,13 @@
 import { useState } from 'react';
+import { useLocation, useRoute } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
-import { useProjects, useCreateProject, useUpdateProject, useDeleteProject, uploadThumbnail } from '@/hooks/use-projects';
+import { useProjects, useProject, useCreateProject, useUpdateProject, useDeleteProject, useProjectBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock, useReorderBlocks, uploadImage } from '@/hooks/use-projects';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Pencil, Trash2, LogOut, Plus, ArrowLeft } from 'lucide-react';
-import { Link } from 'wouter';
-import type { Project, ProjectInsert } from '@/lib/supabase';
+import { Loader2, Pencil, Trash2, LogOut, Plus, ArrowLeft, Image, Type, Video, Grid3X3, GripVertical, ChevronUp, ChevronDown, Save, X } from 'lucide-react';
+import type { Project, ProjectInsert, ProjectBlock, BlockType, ImageBlockData, TextBlockData, VideoBlockData, GridBlockData } from '@/lib/supabase';
 
 function LoginForm({ onLogin }: { onLogin: (email: string, password: string) => Promise<void> }) {
   const [email, setEmail] = useState('');
@@ -30,63 +29,177 @@ function LoginForm({ onLogin }: { onLogin: (email: string, password: string) => 
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="font-display text-2xl text-center">Admin Login</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              data-testid="input-email"
-            />
-            <Input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              data-testid="input-password"
-            />
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading} data-testid="button-login">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sign In'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen flex items-center justify-center bg-zinc-950 p-4">
+      <div className="w-full max-w-md bg-zinc-900 rounded-2xl border border-zinc-800 p-8">
+        <h1 className="font-display text-2xl text-center text-white mb-6">Admin Login</h1>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="bg-zinc-800 border-zinc-700 text-white"
+            data-testid="input-email"
+          />
+          <Input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="bg-zinc-800 border-zinc-700 text-white"
+            data-testid="input-password"
+          />
+          {error && <p className="text-sm text-red-400">{error}</p>}
+          <Button type="submit" className="w-full" disabled={loading} data-testid="button-login">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sign In'}
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }
 
-interface ProjectFormProps {
-  initial?: Project;
-  onSubmit: (data: ProjectInsert) => Promise<void>;
-  onCancel: () => void;
-  loading: boolean;
+function ProjectList() {
+  const [, navigate] = useLocation();
+  const { data: projects, isLoading } = useProjects();
+  const deleteProject = useDeleteProject();
+  const { signOut, user } = useAuth();
+
+  const projectsByYear = projects?.reduce((acc, project) => {
+    const year = project.year;
+    if (!acc[year]) acc[year] = [];
+    acc[year].push(project);
+    return acc;
+  }, {} as Record<number, Project[]>) || {};
+
+  const years = Object.keys(projectsByYear).map(Number).sort((a, b) => b - a);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this project and all its content?')) return;
+    await deleteProject.mutateAsync(id);
+  };
+
+  return (
+    <div className="min-h-screen bg-zinc-950">
+      <header className="sticky top-0 z-10 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <a href="/" className="text-zinc-400 hover:text-white transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </a>
+            <h1 className="font-display text-xl text-white">Projects</h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-zinc-500">{user?.email}</span>
+            <Button 
+              onClick={() => navigate('/admin/projects/new')}
+              className="bg-blue-600 hover:bg-blue-700"
+              data-testid="button-new-project"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New Project
+            </Button>
+            <Button variant="ghost" size="icon" onClick={signOut} className="text-zinc-400 hover:text-white" data-testid="button-logout">
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-6 py-8">
+        {isLoading && (
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          </div>
+        )}
+
+        {!isLoading && years.length === 0 && (
+          <div className="text-center py-20">
+            <p className="text-zinc-500 mb-4">No projects yet</p>
+            <Button onClick={() => navigate('/admin/projects/new')} data-testid="button-create-first">
+              Create your first project
+            </Button>
+          </div>
+        )}
+
+        {years.map((year) => (
+          <div key={year} className="mb-10">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-sm">{year}</span>
+              {year}
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {projectsByYear[year].map((project) => (
+                <div
+                  key={project.id}
+                  className="group bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden hover:border-zinc-700 transition-colors"
+                >
+                  <div className="aspect-video relative overflow-hidden bg-zinc-800">
+                    {project.cover_url ? (
+                      <img src={project.cover_url} alt={project.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-zinc-600">
+                        <Image className="w-8 h-8" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => navigate(`/admin/projects/${project.id}`)}
+                        data-testid={`button-edit-${project.id}`}
+                      >
+                        <Pencil className="w-4 h-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDelete(project.id)}
+                        disabled={deleteProject.isPending}
+                        data-testid={`button-delete-${project.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-medium text-white truncate">{project.title}</h3>
+                    <p className="text-sm text-zinc-500">{project.year}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </main>
+    </div>
+  );
 }
 
-function ProjectForm({ initial, onSubmit, onCancel, loading }: ProjectFormProps) {
-  const [year, setYear] = useState(initial?.year?.toString() || '2026');
-  const [title, setTitle] = useState(initial?.title || '');
-  const [thumbnailUrl, setThumbnailUrl] = useState(initial?.thumbnail_url || '');
-  const [videoUrl, setVideoUrl] = useState(initial?.video_url || '');
-  const [description, setDescription] = useState(initial?.description || '');
+interface BlockEditorProps {
+  block: ProjectBlock;
+  onUpdate: (data: ProjectBlock['data']) => void;
+  onDelete: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  isFirst: boolean;
+  isLast: boolean;
+  isMobile: boolean;
+}
+
+function BlockEditor({ block, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst, isLast, isMobile }: BlockEditorProps) {
   const [uploading, setUploading] = useState(false);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
     setUploading(true);
     try {
-      const url = await uploadThumbnail(file);
-      setThumbnailUrl(url);
+      const url = await uploadImage(file);
+      onUpdate({ url } as ImageBlockData);
     } catch (err) {
       console.error('Upload failed:', err);
     } finally {
@@ -94,117 +207,496 @@ function ProjectForm({ initial, onSubmit, onCancel, loading }: ProjectFormProps)
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await onSubmit({
-      year: parseInt(year),
-      title,
-      thumbnail_url: thumbnailUrl,
-      video_url: videoUrl || null,
-      description,
-    });
+  const handleGridImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploading(true);
+    try {
+      const urls = await Promise.all(files.map(f => uploadImage(f)));
+      const currentUrls = (block.data as GridBlockData).urls || [];
+      onUpdate({ urls: [...currentUrls, ...urls] } as GridBlockData);
+    } catch (err) {
+      console.error('Upload failed:', err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeGridImage = (index: number) => {
+    const urls = [...(block.data as GridBlockData).urls];
+    urls.splice(index, 1);
+    onUpdate({ urls } as GridBlockData);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="text-sm text-muted-foreground">Year</label>
-        <Select value={year} onValueChange={setYear}>
-          <SelectTrigger data-testid="select-year">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="2023">2023</SelectItem>
-            <SelectItem value="2024">2024</SelectItem>
-            <SelectItem value="2025">2025</SelectItem>
-            <SelectItem value="2026">2026</SelectItem>
-          </SelectContent>
-        </Select>
+    <div className="group bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-2 bg-zinc-800/50 border-b border-zinc-800">
+        {!isMobile && <GripVertical className="w-4 h-4 text-zinc-600 cursor-grab" />}
+        <span className="text-xs text-zinc-500 uppercase tracking-wide flex-1">
+          {block.type}
+        </span>
+        {isMobile && (
+          <div className="flex gap-1">
+            <Button size="icon" variant="ghost" onClick={onMoveUp} disabled={isFirst} className="h-7 w-7">
+              <ChevronUp className="w-4 h-4" />
+            </Button>
+            <Button size="icon" variant="ghost" onClick={onMoveDown} disabled={isLast} className="h-7 w-7">
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+        <Button size="icon" variant="ghost" onClick={onDelete} className="h-7 w-7 text-zinc-500 hover:text-red-400">
+          <Trash2 className="w-4 h-4" />
+        </Button>
       </div>
       
-      <div>
-        <label className="text-sm text-muted-foreground">Title</label>
-        <Input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Project title"
-          required
-          data-testid="input-title"
-        />
-      </div>
+      <div className="p-4">
+        {block.type === 'image' && (
+          <div>
+            {(block.data as ImageBlockData).url ? (
+              <div className="relative">
+                <img src={(block.data as ImageBlockData).url} alt="" className="w-full h-auto rounded-lg" />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="absolute top-2 right-2"
+                  onClick={() => onUpdate({ url: '' } as ImageBlockData)}
+                >
+                  Replace
+                </Button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-zinc-700 rounded-lg cursor-pointer hover:border-zinc-600 transition-colors">
+                {uploading ? (
+                  <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+                ) : (
+                  <>
+                    <Image className="w-8 h-8 text-zinc-600 mb-2" />
+                    <span className="text-sm text-zinc-500">Click to upload</span>
+                  </>
+                )}
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              </label>
+            )}
+          </div>
+        )}
 
-      <div>
-        <label className="text-sm text-muted-foreground">Thumbnail</label>
-        <div className="flex gap-2">
-          <Input
-            value={thumbnailUrl}
-            onChange={(e) => setThumbnailUrl(e.target.value)}
-            placeholder="Image URL or upload"
-            className="flex-1"
-            data-testid="input-thumbnail"
+        {block.type === 'text' && (
+          <Textarea
+            value={(block.data as TextBlockData).markdown || ''}
+            onChange={(e) => onUpdate({ markdown: e.target.value } as TextBlockData)}
+            placeholder="Enter text content..."
+            className="bg-zinc-800 border-zinc-700 text-white min-h-[120px] resize-y"
           />
-          <label className="cursor-pointer">
-            <Button type="button" variant="outline" disabled={uploading} asChild>
-              <span>
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Upload'}
-              </span>
-            </Button>
-            <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-          </label>
-        </div>
-        {thumbnailUrl && (
-          <img src={thumbnailUrl} alt="Preview" className="mt-2 h-24 rounded object-cover" />
+        )}
+
+        {block.type === 'video' && (
+          <div>
+            <Input
+              value={(block.data as VideoBlockData).embedUrl || ''}
+              onChange={(e) => onUpdate({ embedUrl: e.target.value } as VideoBlockData)}
+              placeholder="YouTube or Vimeo embed URL"
+              className="bg-zinc-800 border-zinc-700 text-white"
+            />
+            {(block.data as VideoBlockData).embedUrl && (
+              <div className="mt-4 aspect-video bg-black rounded-lg overflow-hidden">
+                <iframe
+                  src={(block.data as VideoBlockData).embedUrl}
+                  className="w-full h-full"
+                  allowFullScreen
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {block.type === 'grid' && (
+          <div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
+              {((block.data as GridBlockData).urls || []).map((url, idx) => (
+                <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group/img">
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  <Button
+                    size="icon"
+                    variant="destructive"
+                    className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                    onClick={() => removeGridImage(idx)}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+              <label className="aspect-square flex items-center justify-center border-2 border-dashed border-zinc-700 rounded-lg cursor-pointer hover:border-zinc-600 transition-colors">
+                {uploading ? (
+                  <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+                ) : (
+                  <Plus className="w-6 h-6 text-zinc-600" />
+                )}
+                <input type="file" accept="image/*" multiple className="hidden" onChange={handleGridImageUpload} />
+              </label>
+            </div>
+          </div>
         )}
       </div>
+    </div>
+  );
+}
 
-      <div>
-        <label className="text-sm text-muted-foreground">Video URL (optional)</label>
-        <Input
-          value={videoUrl}
-          onChange={(e) => setVideoUrl(e.target.value)}
-          placeholder="YouTube or Vimeo embed URL"
-          data-testid="input-video"
-        />
+function ProjectBuilder({ projectId }: { projectId?: string }) {
+  const [, navigate] = useLocation();
+  const { data: existingProject, isLoading: loadingProject } = useProject(projectId);
+  const { data: blocks = [], isLoading: loadingBlocks } = useProjectBlocks(projectId);
+  
+  const createProject = useCreateProject();
+  const updateProject = useUpdateProject();
+  const createBlock = useCreateBlock();
+  const updateBlock = useUpdateBlock();
+  const deleteBlock = useDeleteBlock();
+  const reorderBlocks = useReorderBlocks();
+
+  const [title, setTitle] = useState('');
+  const [year, setYear] = useState('2026');
+  const [coverUrl, setCoverUrl] = useState('');
+  const [localBlocks, setLocalBlocks] = useState<ProjectBlock[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useState(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  });
+
+  useState(() => {
+    if (existingProject) {
+      setTitle(existingProject.title);
+      setYear(existingProject.year.toString());
+      setCoverUrl(existingProject.cover_url);
+    }
+  });
+
+  useState(() => {
+    setLocalBlocks(blocks);
+  });
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadImage(file, 'covers');
+      setCoverUrl(url);
+    } catch (err) {
+      console.error('Upload failed:', err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const addBlock = async (type: BlockType) => {
+    if (!projectId) return;
+    
+    let data: ProjectBlock['data'];
+    switch (type) {
+      case 'image':
+        data = { url: '' };
+        break;
+      case 'text':
+        data = { markdown: '' };
+        break;
+      case 'video':
+        data = { embedUrl: '' };
+        break;
+      case 'grid':
+        data = { urls: [] };
+        break;
+    }
+
+    await createBlock.mutateAsync({
+      project_id: projectId,
+      type,
+      data,
+      sort_order: blocks.length,
+    });
+  };
+
+  const handleBlockUpdate = async (blockId: string, data: ProjectBlock['data']) => {
+    if (!projectId) return;
+    await updateBlock.mutateAsync({ id: blockId, projectId, updates: { data } });
+  };
+
+  const handleBlockDelete = async (blockId: string) => {
+    if (!projectId) return;
+    await deleteBlock.mutateAsync({ id: blockId, projectId });
+  };
+
+  const moveBlock = async (index: number, direction: 'up' | 'down') => {
+    if (!projectId) return;
+    const newBlocks = [...blocks];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newBlocks.length) return;
+    
+    [newBlocks[index], newBlocks[targetIndex]] = [newBlocks[targetIndex], newBlocks[index]];
+    
+    const updates = newBlocks.map((block, idx) => ({ id: block.id, sort_order: idx }));
+    await reorderBlocks.mutateAsync({ projectId, blocks: updates });
+  };
+
+  const handleSave = async () => {
+    if (!title.trim()) {
+      alert('Please enter a project title');
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      if (projectId) {
+        await updateProject.mutateAsync({
+          id: projectId,
+          updates: { title, year: parseInt(year), cover_url: coverUrl }
+        });
+      } else {
+        const newProject = await createProject.mutateAsync({
+          title,
+          year: parseInt(year),
+          cover_url: coverUrl
+        });
+        navigate(`/admin/projects/${newProject.id}`);
+      }
+    } catch (err) {
+      console.error('Save failed:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (projectId && (loadingProject || loadingBlocks)) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  const sidebarContent = (
+    <div className="space-y-2">
+      <p className="text-xs text-zinc-500 uppercase tracking-wide mb-3">Add Content</p>
+      <button
+        onClick={() => addBlock('image')}
+        disabled={!projectId}
+        className="w-full flex items-center gap-3 p-3 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 transition-colors text-left disabled:opacity-50"
+        data-testid="button-add-image"
+      >
+        <div className="w-10 h-10 rounded-lg bg-zinc-700 flex items-center justify-center">
+          <Image className="w-5 h-5 text-zinc-400" />
+        </div>
+        <span className="text-sm text-zinc-300">Image</span>
+      </button>
+      <button
+        onClick={() => addBlock('text')}
+        disabled={!projectId}
+        className="w-full flex items-center gap-3 p-3 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 transition-colors text-left disabled:opacity-50"
+        data-testid="button-add-text"
+      >
+        <div className="w-10 h-10 rounded-lg bg-zinc-700 flex items-center justify-center">
+          <Type className="w-5 h-5 text-zinc-400" />
+        </div>
+        <span className="text-sm text-zinc-300">Text</span>
+      </button>
+      <button
+        onClick={() => addBlock('video')}
+        disabled={!projectId}
+        className="w-full flex items-center gap-3 p-3 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 transition-colors text-left disabled:opacity-50"
+        data-testid="button-add-video"
+      >
+        <div className="w-10 h-10 rounded-lg bg-zinc-700 flex items-center justify-center">
+          <Video className="w-5 h-5 text-zinc-400" />
+        </div>
+        <span className="text-sm text-zinc-300">Video</span>
+      </button>
+      <button
+        onClick={() => addBlock('grid')}
+        disabled={!projectId}
+        className="w-full flex items-center gap-3 p-3 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 transition-colors text-left disabled:opacity-50"
+        data-testid="button-add-grid"
+      >
+        <div className="w-10 h-10 rounded-lg bg-zinc-700 flex items-center justify-center">
+          <Grid3X3 className="w-5 h-5 text-zinc-400" />
+        </div>
+        <span className="text-sm text-zinc-300">Image Grid</span>
+      </button>
+      {!projectId && (
+        <p className="text-xs text-zinc-600 mt-4 px-2">
+          Save the project first to add content blocks
+        </p>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-zinc-950 flex flex-col">
+      <header className="sticky top-0 z-20 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800">
+        <div className="px-4 md:px-6 py-3 flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/admin')}
+            className="text-zinc-400 hover:text-white"
+            data-testid="button-back-to-list"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Project title"
+            className="flex-1 max-w-md bg-transparent border-none text-xl text-white placeholder:text-zinc-600 focus-visible:ring-0 px-0"
+            data-testid="input-project-title"
+          />
+          
+          <Select value={year} onValueChange={setYear}>
+            <SelectTrigger className="w-24 bg-zinc-800 border-zinc-700" data-testid="select-year">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="2023">2023</SelectItem>
+              <SelectItem value="2024">2024</SelectItem>
+              <SelectItem value="2025">2025</SelectItem>
+              <SelectItem value="2026">2026</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-blue-600 hover:bg-blue-700"
+            data-testid="button-save-project"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            Save
+          </Button>
+        </div>
+      </header>
+
+      <div className="flex-1 flex">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
+              <div className="px-4 py-2 bg-zinc-800/50 border-b border-zinc-800">
+                <span className="text-xs text-zinc-500 uppercase tracking-wide">Cover Image</span>
+              </div>
+              <div className="p-4">
+                {coverUrl ? (
+                  <div className="relative">
+                    <img src={coverUrl} alt="Cover" className="w-full aspect-video object-cover rounded-lg" />
+                    <label className="absolute top-2 right-2">
+                      <Button size="sm" variant="secondary" asChild>
+                        <span>{uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Replace'}</span>
+                      </Button>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+                    </label>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-zinc-700 rounded-lg cursor-pointer hover:border-zinc-600 transition-colors">
+                    {uploading ? (
+                      <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+                    ) : (
+                      <>
+                        <Image className="w-10 h-10 text-zinc-600 mb-2" />
+                        <span className="text-sm text-zinc-500">Upload cover image</span>
+                      </>
+                    )}
+                    <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+                  </label>
+                )}
+              </div>
+            </div>
+
+            {blocks.map((block, index) => (
+              <BlockEditor
+                key={block.id}
+                block={block}
+                onUpdate={(data) => handleBlockUpdate(block.id, data)}
+                onDelete={() => handleBlockDelete(block.id)}
+                onMoveUp={() => moveBlock(index, 'up')}
+                onMoveDown={() => moveBlock(index, 'down')}
+                isFirst={index === 0}
+                isLast={index === blocks.length - 1}
+                isMobile={isMobile}
+              />
+            ))}
+
+            {blocks.length === 0 && projectId && (
+              <div className="text-center py-12 text-zinc-600">
+                <p className="mb-2">No content blocks yet</p>
+                <p className="text-sm">Use the sidebar to add content</p>
+              </div>
+            )}
+          </div>
+        </main>
+
+        <aside className="hidden md:block w-64 border-l border-zinc-800 p-4 bg-zinc-900/50">
+          {sidebarContent}
+        </aside>
       </div>
 
-      <div>
-        <label className="text-sm text-muted-foreground">Description</label>
-        <Textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Project description"
-          rows={4}
-          required
-          data-testid="input-description"
-        />
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 p-4">
+        <div className="flex gap-2 justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => addBlock('image')}
+            disabled={!projectId}
+            className="flex-1"
+          >
+            <Image className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => addBlock('text')}
+            disabled={!projectId}
+            className="flex-1"
+          >
+            <Type className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => addBlock('video')}
+            disabled={!projectId}
+            className="flex-1"
+          >
+            <Video className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => addBlock('grid')}
+            disabled={!projectId}
+            className="flex-1"
+          >
+            <Grid3X3 className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
-
-      <div className="flex gap-2">
-        <Button type="submit" disabled={loading || uploading} data-testid="button-save">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : initial ? 'Update' : 'Create'}
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
-    </form>
+    </div>
   );
 }
 
 export default function Admin() {
-  const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const { data: projects, isLoading: projectsLoading } = useProjects();
-  const createProject = useCreateProject();
-  const updateProject = useUpdateProject();
-  const deleteProject = useDeleteProject();
-  
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  const { user, loading: authLoading, signIn } = useAuth();
+  const [matchList] = useRoute('/admin');
+  const [matchNew] = useRoute('/admin/projects/new');
+  const [matchEdit, params] = useRoute('/admin/projects/:id');
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -213,139 +705,13 @@ export default function Admin() {
     return <LoginForm onLogin={signIn} />;
   }
 
-  const handleCreate = async (data: ProjectInsert) => {
-    await createProject.mutateAsync(data);
-    setIsCreating(false);
-  };
+  if (matchNew) {
+    return <ProjectBuilder />;
+  }
 
-  const handleUpdate = async (data: ProjectInsert) => {
-    if (!editingProject) return;
-    await updateProject.mutateAsync({ id: editingProject.id, updates: data });
-    setEditingProject(null);
-  };
+  if (matchEdit && params?.id) {
+    return <ProjectBuilder projectId={params.id} />;
+  }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this project?')) return;
-    await deleteProject.mutateAsync(id);
-  };
-
-  return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button variant="ghost" size="icon" data-testid="button-back">
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-            </Link>
-            <h1 className="font-display text-3xl font-bold">Project Admin</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{user.email}</span>
-            <Button variant="outline" onClick={signOut} data-testid="button-logout">
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-1">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                {editingProject ? 'Edit Project' : 'New Project'}
-                {!isCreating && !editingProject && (
-                  <Button size="sm" onClick={() => setIsCreating(true)} data-testid="button-new">
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add
-                  </Button>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {(isCreating || editingProject) && (
-                <ProjectForm
-                  initial={editingProject || undefined}
-                  onSubmit={editingProject ? handleUpdate : handleCreate}
-                  onCancel={() => {
-                    setIsCreating(false);
-                    setEditingProject(null);
-                  }}
-                  loading={createProject.isPending || updateProject.isPending}
-                />
-              )}
-              {!isCreating && !editingProject && (
-                <p className="text-muted-foreground text-sm">
-                  Click "Add" to create a new project
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>All Projects</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {projectsLoading && (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                )}
-                
-                {projects && projects.length === 0 && (
-                  <p className="text-muted-foreground text-center py-8">No projects yet</p>
-                )}
-
-                {projects && projects.length > 0 && (
-                  <div className="space-y-3">
-                    {projects.map((project) => (
-                      <div
-                        key={project.id}
-                        className="flex items-center gap-4 p-3 rounded-lg bg-secondary/30"
-                      >
-                        <img
-                          src={project.thumbnail_url}
-                          alt={project.title}
-                          className="w-16 h-10 rounded object-cover"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{project.title}</p>
-                          <p className="text-sm text-muted-foreground">{project.year}</p>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => {
-                              setEditingProject(project);
-                              setIsCreating(false);
-                            }}
-                            data-testid={`button-edit-${project.id}`}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => handleDelete(project.id)}
-                            disabled={deleteProject.isPending}
-                            data-testid={`button-delete-${project.id}`}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return <ProjectList />;
 }
