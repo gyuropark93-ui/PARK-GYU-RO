@@ -73,16 +73,13 @@ export default function Home() {
   return (
     <div className="relative w-full h-screen overflow-hidden bg-black select-none">
       
-      {/* 1. Background Layer (Z-0) */}
+      {/* 1. Background Layer (Z-0) - Always visible, never unmounted */}
       <div className="absolute inset-0 z-0">
         <img
-          key={currentYear}
           src={`/assets/idle_${currentYear}.png`}
           alt={`Subway platform ${currentYear}`}
-          className="w-full h-full object-cover animate-fade-in"
+          className="w-full h-full object-cover transition-opacity duration-300"
         />
-        {/* Dark overlay for text readability if needed, though assets seem dark enough */}
-        <div className="absolute inset-0 bg-black/10 pointer-events-none" />
       </div>
 
       {/* 2. UI Layer (Z-10) */}
@@ -130,16 +127,16 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 3. Video Overlay Layer (Z-20) */}
+      {/* 3. Video Overlay Layer (Z-20) - Transparent overlay on top of idle background */}
       {isTransitioning && transitionType && (
-        <div className="absolute inset-0 z-20 bg-black">
+        <div className="fixed inset-0 z-20 pointer-events-none">
           <video
             ref={videoRef}
             className="w-full h-full object-cover"
             src={`/assets/transition_${transitionType}.webm`}
             onEnded={handleVideoEnd}
             playsInline
-            muted // Muted usually required for autoplay without interaction, though click triggers this so simple play() works
+            muted
           />
         </div>
       )}
