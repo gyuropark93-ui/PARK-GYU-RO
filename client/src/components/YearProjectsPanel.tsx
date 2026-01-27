@@ -230,10 +230,6 @@ function ProjectDetailView({
         )}
 
         <div className="px-4 md:px-8 py-8 max-w-5xl mx-auto">
-          <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-8">
-            {project.title}
-          </h1>
-
           {isLoading && (
             <div className="flex justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
