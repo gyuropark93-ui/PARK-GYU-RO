@@ -2,12 +2,15 @@ import { useState, useRef, useEffect } from "react";
 import { NavButton } from "@/components/NavButton";
 import { YearIndicator } from "@/components/YearIndicator";
 import { YearProjectsPanel } from "@/components/YearProjectsPanel";
+import { Preloader } from "@/components/Preloader";
+import { getTransitionVideoPath } from "@/lib/browserDetect";
 import { useLogVisit } from "@/hooks/use-visit";
 
 const MIN_YEAR = 2023;
 const MAX_YEAR = 2026;
 
 export default function Home() {
+  const [isLoading, setIsLoading] = useState(true);
   const [currentYear, setCurrentYear] = useState(2026);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionType, setTransitionType] = useState<"forward" | "back" | null>(null);
@@ -110,11 +113,12 @@ export default function Home() {
           <video
             ref={videoRef}
             className="w-full h-full object-cover"
-            src={`/assets/transition_${transitionType}.webm`}
+            src={getTransitionVideoPath(transitionType)}
             onTimeUpdate={handleTimeUpdate}
             onEnded={handleVideoEnd}
             playsInline
             muted
+            autoPlay
           />
         </div>
       )}
@@ -170,6 +174,8 @@ export default function Home() {
           onClose={() => setShowProjects(false)}
         />
       )}
+      {/* Preloader - 첫 접속 시 에셋 로딩 */}
+      {isLoading && <Preloader onComplete={() => setIsLoading(false)} />}
     </div>
   );
 }
