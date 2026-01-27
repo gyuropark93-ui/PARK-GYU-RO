@@ -76,7 +76,24 @@ shared/           # Shared code between client/server
 
 ## Recent Changes
 
-### January 26, 2026 (Latest)
+### January 27, 2026 (Latest)
+- **Safari transition video support** - Browser-specific video formats
+  - Safari (desktop/iOS): ProRes 4444 .mov files with alpha channel
+  - Chrome/Edge/Firefox: WebM VP9 with alpha channel
+  - Browser detection excludes iOS Chrome/Edge/Firefox (CriOS/EdgiOS/FxiOS)
+- **Preloader with progress bar** - Initial asset loading screen
+  - Full-screen overlay at z-100 with dark zinc-950 background
+  - Progress bar showing percentage (0-100%)
+  - Preloads: both transition videos + all year background images
+  - Minimum 400ms display time, then fades out
+- **Asset preloading** - Smoother first interaction
+  - Transition videos (forward + back) preloaded before main content
+  - Year images (/assets/idle_2023-2026.png) preloaded
+- **Editor dropdown flicker fix** - Stable hover state while menus open
+  - TipTapEditor tracks open menu state via onMenuOpenChange callback
+  - BlockWrapper ignores onMouseLeave when editor menu is open
+
+### January 26, 2026
 - **Rich Text Editor Upgrade** - Behance-style toolbar with full formatting options
   - Heading dropdown (Paragraph, H1, H2, H3)
   - Font family dropdown (Helvetica, Inter, Pretendard)
