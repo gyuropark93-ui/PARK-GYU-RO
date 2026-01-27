@@ -196,7 +196,7 @@ function ProjectDetailView({
 
   return (
     <div className="flex flex-col h-full animate-slide-in-right">
-      <div className="sticky top-0 z-20 flex items-center justify-between px-4 md:px-6 py-4 bg-zinc-900/95 backdrop-blur-md border-b border-white/10 pt-[8px] pb-[8px]">
+      <div className="sticky top-0 z-20 flex items-center justify-between px-4 md:px-6 py-4 bg-zinc-900/95 backdrop-blur-md border-b border-white/10 pt-[10px] pb-[10px]">
         <button
           onClick={onBack}
           className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group"
@@ -329,7 +329,7 @@ export function YearProjectsPanel({ year, onClose }: YearProjectsPanelProps) {
       >
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 z-30 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
+          className="absolute top-8 right-4 z-30 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
           data-testid="button-close-panel"
         >
           <X className="w-5 h-5 text-white" />

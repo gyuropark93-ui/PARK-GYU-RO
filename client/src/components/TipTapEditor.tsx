@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input";
 interface TipTapEditorProps {
   content: Record<string, unknown> | null;
   onChange: (json: Record<string, unknown>) => void;
+  onMenuOpenChange?: (open: boolean) => void;
 }
 
 const FONT_FAMILIES = [
@@ -51,9 +52,17 @@ const HEADING_OPTIONS = [
   { label: "H3", value: 3 },
 ];
 
-function MenuBar({ editor }: { editor: ReturnType<typeof useEditor> }) {
+function MenuBar({ editor, onMenuOpenChange }: { editor: ReturnType<typeof useEditor>; onMenuOpenChange?: (open: boolean) => void }) {
   const [linkUrl, setLinkUrl] = useState("");
   const [linkOpen, setLinkOpen] = useState(false);
+  const [headingOpen, setHeadingOpen] = useState(false);
+  const [fontFamilyOpen, setFontFamilyOpen] = useState(false);
+  const [fontSizeOpen, setFontSizeOpen] = useState(false);
+
+  useEffect(() => {
+    const anyOpen = headingOpen || fontFamilyOpen || fontSizeOpen || linkOpen;
+    onMenuOpenChange?.(anyOpen);
+  }, [headingOpen, fontFamilyOpen, fontSizeOpen, linkOpen, onMenuOpenChange]);
 
   if (!editor) return null;
 
@@ -124,7 +133,7 @@ function MenuBar({ editor }: { editor: ReturnType<typeof useEditor> }) {
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <DropdownMenu>
+      <DropdownMenu open={headingOpen} onOpenChange={setHeadingOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
@@ -152,7 +161,7 @@ function MenuBar({ editor }: { editor: ReturnType<typeof useEditor> }) {
 
       <div className="w-px h-6 bg-zinc-600 mx-1 self-center" />
 
-      <DropdownMenu>
+      <DropdownMenu open={fontFamilyOpen} onOpenChange={setFontFamilyOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
@@ -179,7 +188,7 @@ function MenuBar({ editor }: { editor: ReturnType<typeof useEditor> }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <DropdownMenu>
+      <DropdownMenu open={fontSizeOpen} onOpenChange={setFontSizeOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
@@ -396,7 +405,7 @@ function PreviewContent({
   );
 }
 
-export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
+export function TipTapEditor({ content, onChange, onMenuOpenChange }: TipTapEditorProps) {
   const [isPreview, setIsPreview] = useState(false);
 
   const editor = useEditor({
@@ -463,7 +472,7 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
         <PreviewContent content={content} />
       ) : (
         <>
-          <MenuBar editor={editor} />
+          <MenuBar editor={editor} onMenuOpenChange={onMenuOpenChange} />
           <div className="min-h-[120px] p-4">
             <EditorContent
               editor={editor}

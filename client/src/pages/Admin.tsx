@@ -516,6 +516,7 @@ function BlockEditor({
   };
 
   const textData = block.data as TextBlockData;
+  const [editorMenuOpen, setEditorMenuOpen] = useState(false);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
@@ -534,7 +535,7 @@ function BlockEditor({
       className={`bg-zinc-900/50 rounded-xl transition-all cursor-pointer ${isSelected ? "ring-2 ring-blue-500" : isHovered ? "ring-1 ring-zinc-600" : ""}`}
       onPointerDown={handlePointerDown}
       onMouseEnter={() => !isMobile && onHover(true)}
-      onMouseLeave={() => !isMobile && onHover(false)}
+      onMouseLeave={() => !isMobile && !editorMenuOpen && onHover(false)}
     >
       {showActions && (
         <div className="flex items-center gap-1 px-3 py-2 bg-zinc-800/80 border-b border-zinc-700 rounded-t-xl">
@@ -665,6 +666,7 @@ function BlockEditor({
               onChange={(json) =>
                 onUpdate({ ...block.data, json } as TextBlockData)
               }
+              onMenuOpenChange={setEditorMenuOpen}
             />
           </div>
         )}
