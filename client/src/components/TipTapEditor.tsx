@@ -1,12 +1,7 @@
 import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-import Underline from "@tiptap/extension-underline";
-import TextAlign from "@tiptap/extension-text-align";
-import Link from "@tiptap/extension-link";
-import { TextStyle } from "@tiptap/extension-text-style";
-import FontFamily from "@tiptap/extension-font-family";
 import { useState, useEffect, useCallback } from "react";
+import { getSharedExtensions } from "@/lib/tiptapExtensions";
 import {
   Bold,
   Italic,
@@ -55,23 +50,6 @@ const HEADING_OPTIONS = [
   { label: "H2", value: 2 },
   { label: "H3", value: 3 },
 ];
-
-const FontSize = TextStyle.extend({
-  addAttributes() {
-    return {
-      ...this.parent?.(),
-      fontSize: {
-        default: null,
-        parseHTML: (element: HTMLElement) =>
-          element.style.fontSize?.replace("px", ""),
-        renderHTML: (attributes: Record<string, unknown>) => {
-          if (!attributes.fontSize) return {};
-          return { style: `font-size: ${attributes.fontSize}px` };
-        },
-      },
-    };
-  },
-});
 
 function MenuBar({ editor }: { editor: ReturnType<typeof useEditor> }) {
   const [linkUrl, setLinkUrl] = useState("");
@@ -398,14 +376,7 @@ function PreviewContent({
   content: Record<string, unknown> | null;
 }) {
   const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline,
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-      Link.configure({ openOnClick: false }),
-      FontSize,
-      FontFamily,
-    ],
+    extensions: getSharedExtensions(false),
     content: content || { type: "doc", content: [] },
     editable: false,
   });
@@ -430,20 +401,10 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      ...getSharedExtensions(true),
       Placeholder.configure({
         placeholder: "Start typing your content...",
       }),
-      Underline,
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-      Link.configure({
-        openOnClick: false,
-        HTMLAttributes: {
-          class: "text-blue-400 underline cursor-pointer",
-        },
-      }),
-      FontSize,
-      FontFamily,
     ],
     content: content || { type: "doc", content: [] },
     onUpdate: ({ editor }) => {
@@ -521,22 +482,7 @@ export function TipTapRenderer({
   content: Record<string, unknown> | null;
 }) {
   const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline,
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-      Link.configure({
-        openOnClick: true,
-        HTMLAttributes: {
-          class: "text-blue-400 underline cursor-pointer",
-          target: "_blank",
-          rel: "noopener noreferrer",
-        },
-      }),
-      TextStyle,
-      FontSize,
-      FontFamily,
-    ],
+    extensions: getSharedExtensions(false),
     content: content || { type: "doc", content: [] },
     editable: false,
   });
