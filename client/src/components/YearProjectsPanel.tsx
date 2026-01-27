@@ -196,7 +196,7 @@ function ProjectDetailView({
 
   return (
     <div className="flex flex-col h-full animate-slide-in-right">
-      <div className="sticky top-0 z-20 flex items-center justify-between px-4 md:px-6 py-4 bg-zinc-900/95 backdrop-blur-md border-b border-white/10">
+      <div className="sticky top-0 z-20 flex items-center justify-between px-4 md:px-6 py-4 bg-zinc-900/95 backdrop-blur-md border-b border-white/10 pt-[8px] pb-[8px]">
         <button
           onClick={onBack}
           className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group"
@@ -207,12 +207,11 @@ function ProjectDetailView({
             Back to Projects
           </span>
         </button>
-        <h2 className="hidden md:block font-display text-lg font-semibold text-white truncate max-w-md">
+        <h2 className="hidden md:block font-display font-semibold text-white truncate max-w-md mt-[10px] mb-[10px] text-[40px] pt-[10px] pb-[10px]">
           {project.title}
         </h2>
         <div className="w-20" />
       </div>
-
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {hasHeroVideo ? (
           <div className="w-full">
