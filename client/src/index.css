@@ -109,6 +109,7 @@
 .tiptap-content .ProseMirror {
   outline: none;
   min-height: 80px;
+  color: hsl(var(--foreground));
 }
 
 .tiptap-content .ProseMirror {
