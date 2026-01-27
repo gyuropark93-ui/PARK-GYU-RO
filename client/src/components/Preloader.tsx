@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { isSafari, getTransitionVideoPath } from "@/lib/browserDetect";
+import { getTransitionVideoPath } from "@/lib/browserDetect";
 
 interface PreloaderProps {
   onComplete: () => void;
@@ -15,13 +15,13 @@ export function Preloader({ onComplete }: PreloaderProps) {
 
   const preloadAssets = useCallback(async () => {
     const startTime = Date.now();
-    const safari = isSafari();
 
-    const transitionVideo = getTransitionVideoPath("forward");
+    const transitionVideoForward = getTransitionVideoPath("forward");
+    const transitionVideoBack = getTransitionVideoPath("back");
 
     const yearImages = YEARS.map((year) => `/assets/idle_${year}.png`);
 
-    const assets: string[] = [transitionVideo, ...yearImages];
+    const assets: string[] = [transitionVideoForward, transitionVideoBack, ...yearImages];
     const total = assets.length;
     let loaded = 0;
 
