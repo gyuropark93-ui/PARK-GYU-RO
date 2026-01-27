@@ -207,7 +207,7 @@ function ProjectDetailView({
             Back to Projects
           </span>
         </button>
-        <h2 className="hidden md:block font-display font-semibold text-white truncate max-w-md mt-[10px] mb-[10px] text-[40px] pt-[10px] pb-[10px]">
+        <h2 className="hidden md:block font-display font-semibold text-white truncate max-w-md text-[40px] pt-[10px] pb-[10px] mt-[0px] mb-[0px]">
           {project.title}
         </h2>
         <div className="w-20" />
