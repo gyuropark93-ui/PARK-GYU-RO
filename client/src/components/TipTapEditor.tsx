@@ -533,6 +533,7 @@ export function TipTapRenderer({
           rel: "noopener noreferrer",
         },
       }),
+      TextStyle,
       FontSize,
       FontFamily,
     ],
