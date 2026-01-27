@@ -10,6 +10,6 @@ export function isSafari(): boolean {
 
 export function getTransitionVideoPath(direction: "forward" | "back"): string {
   const safari = isSafari();
-  const ext = safari ? "mov" : "webm";
+  const ext = safari ? "mp4" : "webm";
   return `/assets/transition_${direction}${safari ? "_safari" : ""}.${ext}`;
 }

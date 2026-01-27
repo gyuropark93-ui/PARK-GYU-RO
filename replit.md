@@ -78,7 +78,7 @@ shared/           # Shared code between client/server
 
 ### January 27, 2026 (Latest)
 - **Safari transition video support** - Browser-specific video formats
-  - Safari (desktop/iOS): ProRes 4444 .mov files with alpha channel
+  - Safari (desktop/iOS): MP4 files with HEVC/H.265 codec
   - Chrome/Edge/Firefox: WebM VP9 with alpha channel
   - Browser detection excludes iOS Chrome/Edge/Firefox (CriOS/EdgiOS/FxiOS)
 - **Preloader with progress bar** - Initial asset loading screen
