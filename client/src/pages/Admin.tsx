@@ -1,14 +1,63 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useLocation, useRoute } from 'wouter';
-import { useAuth } from '@/hooks/use-auth';
-import { useProjects, useProject, useCreateProject, useUpdateProject, useDeleteProject, useProjectBlocks, useCreateBlock, useUpdateBlock, useDeleteBlock, useReorderBlocks, uploadImage } from '@/hooks/use-projects';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Pencil, Trash2, LogOut, Plus, ArrowLeft, Image, Type, Video, Grid3X3, GripVertical, ChevronUp, ChevronDown, Save, X, Minus, Square, Copy, Play, AlertCircle } from 'lucide-react';
-import type { Project, ProjectBlock, BlockType, ImageBlockData, TextBlockData, VideoBlockData, GridBlockData, DividerBlockData, SpacerBlockData } from '@/lib/supabase';
-import { toEmbedUrl, getAspectRatioClass } from '@/lib/videoEmbed';
-import { TipTapEditor } from '@/components/TipTapEditor';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useLocation, useRoute } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  useProjects,
+  useProject,
+  useCreateProject,
+  useUpdateProject,
+  useDeleteProject,
+  useProjectBlocks,
+  useCreateBlock,
+  useUpdateBlock,
+  useDeleteBlock,
+  useReorderBlocks,
+  uploadImage,
+} from "@/hooks/use-projects";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Loader2,
+  Pencil,
+  Trash2,
+  LogOut,
+  Plus,
+  ArrowLeft,
+  Image,
+  Type,
+  Video,
+  Grid3X3,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
+  Save,
+  X,
+  Minus,
+  Square,
+  Copy,
+  Play,
+  AlertCircle,
+} from "lucide-react";
+import type {
+  Project,
+  ProjectBlock,
+  BlockType,
+  ImageBlockData,
+  TextBlockData,
+  VideoBlockData,
+  GridBlockData,
+  DividerBlockData,
+  SpacerBlockData,
+} from "@/lib/supabase";
+import { toEmbedUrl, getAspectRatioClass } from "@/lib/videoEmbed";
+import { TipTapEditor } from "@/components/TipTapEditor";
 import {
   DndContext,
   closestCenter,
@@ -17,30 +66,34 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-} from '@dnd-kit/core';
+} from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
-function LoginForm({ onLogin }: { onLogin: (email: string, password: string) => Promise<void> }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+function LoginForm({
+  onLogin,
+}: {
+  onLogin: (email: string, password: string) => Promise<void>;
+}) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
     try {
       await onLogin(email, password);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setLoading(false);
     }
@@ -49,7 +102,9 @@ function LoginForm({ onLogin }: { onLogin: (email: string, password: string) => 
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-950 p-4">
       <div className="w-full max-w-md bg-zinc-900 rounded-2xl border border-zinc-800 p-8">
-        <h1 className="font-display text-2xl text-center text-white mb-6">Admin Login</h1>
+        <h1 className="font-display text-2xl text-center text-white mb-6">
+          Admin Login
+        </h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             type="email"
@@ -70,8 +125,13 @@ function LoginForm({ onLogin }: { onLogin: (email: string, password: string) => 
             data-testid="input-password"
           />
           {error && <p className="text-sm text-red-400">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading} data-testid="button-login">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sign In'}
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={loading}
+            data-testid="button-login"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign In"}
           </Button>
         </form>
       </div>
@@ -86,30 +146,36 @@ function ProjectList() {
   const createProject = useCreateProject();
   const { signOut, user } = useAuth();
 
-  const projectsByYear = projects?.reduce((acc, project) => {
-    const year = project.year;
-    if (!acc[year]) acc[year] = [];
-    acc[year].push(project);
-    return acc;
-  }, {} as Record<number, Project[]>) || {};
+  const projectsByYear =
+    projects?.reduce(
+      (acc, project) => {
+        const year = project.year;
+        if (!acc[year]) acc[year] = [];
+        acc[year].push(project);
+        return acc;
+      },
+      {} as Record<number, Project[]>,
+    ) || {};
 
-  const years = Object.keys(projectsByYear).map(Number).sort((a, b) => b - a);
+  const years = Object.keys(projectsByYear)
+    .map(Number)
+    .sort((a, b) => b - a);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this project and all its content?')) return;
+    if (!confirm("Delete this project and all its content?")) return;
     await deleteProject.mutateAsync(id);
   };
 
   const handleNewProject = async () => {
     try {
       const newProject = await createProject.mutateAsync({
-        title: 'Untitled',
+        title: "Untitled",
         year: 2026,
-        cover_url: null
+        cover_url: null,
       });
       navigate(`/admin/projects/${newProject.id}`);
     } catch (err) {
-      console.error('Failed to create project:', err);
+      console.error("Failed to create project:", err);
     }
   };
 
@@ -118,30 +184,48 @@ function ProjectList() {
       <header className="flex-shrink-0 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800">
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4">
-            <a href="/" className="text-zinc-400 transition-colors hover-elevate p-1 rounded" data-testid="link-back-to-home">
+            <a
+              href="/"
+              className="text-zinc-400 transition-colors hover-elevate p-1 rounded"
+              data-testid="link-back-to-home"
+            >
               <ArrowLeft className="w-5 h-5" />
             </a>
             <h1 className="font-display text-xl text-white">Projects</h1>
           </div>
           <div className="flex items-center gap-2 md:gap-4">
-            <span className="text-sm text-zinc-500 hidden sm:block">{user?.email}</span>
-            <Button 
+            <span className="text-sm text-zinc-500 hidden sm:block">
+              {user?.email}
+            </span>
+            <Button
               onClick={handleNewProject}
               className="bg-blue-600"
               disabled={createProject.isPending}
               data-testid="button-new-project"
             >
-              {createProject.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+              {createProject.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4 mr-2" />
+              )}
               New Project
             </Button>
-            <Button variant="ghost" size="icon" onClick={signOut} data-testid="button-logout">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={signOut}
+              data-testid="button-logout"
+            >
               <LogOut className="w-5 h-5" />
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <main
+        className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-8">
           {isLoading && (
             <div className="flex justify-center py-20">
@@ -152,7 +236,10 @@ function ProjectList() {
           {!isLoading && years.length === 0 && (
             <div className="text-center py-20">
               <p className="text-zinc-500 mb-4">No projects yet</p>
-              <Button onClick={handleNewProject} data-testid="button-create-first">
+              <Button
+                onClick={handleNewProject}
+                data-testid="button-create-first"
+              >
                 Create your first project
               </Button>
             </div>
@@ -161,7 +248,9 @@ function ProjectList() {
           {years.map((year) => (
             <div key={year} className="mb-10">
               <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-sm">{year}</span>
+                <span className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-sm">
+                  {year}
+                </span>
                 {year}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -172,7 +261,11 @@ function ProjectList() {
                   >
                     <div className="aspect-video relative overflow-hidden bg-zinc-800">
                       {project.cover_url ? (
-                        <img src={project.cover_url} alt={project.title} className="w-full h-full object-cover" />
+                        <img
+                          src={project.cover_url}
+                          alt={project.title}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-zinc-600">
                           <Image className="w-8 h-8" />
@@ -182,7 +275,9 @@ function ProjectList() {
                         <Button
                           size="sm"
                           variant="secondary"
-                          onClick={() => navigate(`/admin/projects/${project.id}`)}
+                          onClick={() =>
+                            navigate(`/admin/projects/${project.id}`)
+                          }
                           data-testid={`button-edit-${project.id}`}
                         >
                           <Pencil className="w-4 h-4 mr-1" />
@@ -200,7 +295,9 @@ function ProjectList() {
                       </div>
                     </div>
                     <div className="p-4">
-                      <h3 className="font-medium text-white truncate">{project.title}</h3>
+                      <h3 className="font-medium text-white truncate">
+                        {project.title}
+                      </h3>
                       <p className="text-sm text-zinc-500">{project.year}</p>
                     </div>
                   </div>
@@ -216,7 +313,7 @@ function ProjectList() {
 
 interface BlockEditorProps {
   block: ProjectBlock;
-  onUpdate: (data: ProjectBlock['data']) => void;
+  onUpdate: (data: ProjectBlock["data"]) => void;
   onDelete: () => void;
   onDuplicate: () => void;
   onMoveUp: () => void;
@@ -229,19 +326,25 @@ interface BlockEditorProps {
   onSelect: () => void;
   onHover: (hovered: boolean) => void;
   dragHandleProps?: {
-    attributes: ReturnType<typeof useSortable>['attributes'];
-    listeners: ReturnType<typeof useSortable>['listeners'];
+    attributes: ReturnType<typeof useSortable>["attributes"];
+    listeners: ReturnType<typeof useSortable>["listeners"];
   };
 }
 
-function VideoBlockEditor({ data, onUpdate }: { data: VideoBlockData; onUpdate: (data: VideoBlockData) => void }) {
+function VideoBlockEditor({
+  data,
+  onUpdate,
+}: {
+  data: VideoBlockData;
+  onUpdate: (data: VideoBlockData) => void;
+}) {
   const [showPreview, setShowPreview] = useState(false);
-  const inputUrl = data.originalUrl || data.embedUrl || '';
+  const inputUrl = data.originalUrl || data.embedUrl || "";
   const embedResult = inputUrl ? toEmbedUrl(inputUrl) : null;
   const validEmbedUrl = embedResult?.embedUrl || null;
   const error = embedResult?.error || null;
   const lazyPreview = data.lazyPreview !== false;
-  const aspect = data.aspect || '16:9';
+  const aspect = data.aspect || "16:9";
   const aspectClass = getAspectRatioClass(aspect);
 
   const handleUrlChange = (rawUrl: string) => {
@@ -249,7 +352,7 @@ function VideoBlockEditor({ data, onUpdate }: { data: VideoBlockData; onUpdate: 
     onUpdate({
       ...data,
       originalUrl: rawUrl,
-      embedUrl: result.embedUrl || '',
+      embedUrl: result.embedUrl || "",
       lazyPreview: data.lazyPreview,
       aspect: data.aspect,
     });
@@ -258,7 +361,9 @@ function VideoBlockEditor({ data, onUpdate }: { data: VideoBlockData; onUpdate: 
 
   return (
     <div onClick={(e) => e.stopPropagation()}>
-      <label className="block text-sm text-zinc-400 mb-1">YouTube / Vimeo URL</label>
+      <label className="block text-sm text-zinc-400 mb-1">
+        YouTube / Vimeo URL
+      </label>
       <Input
         value={inputUrl}
         onChange={(e) => handleUrlChange(e.target.value)}
@@ -267,22 +372,25 @@ function VideoBlockEditor({ data, onUpdate }: { data: VideoBlockData; onUpdate: 
         data-testid="input-video-url"
       />
       <p className="text-xs text-zinc-500 mt-1">
-        Paste a normal YouTube/Vimeo link. We'll convert it to an embed automatically.
+        Paste a normal YouTube/Vimeo link. We'll convert it to an embed
+        automatically.
       </p>
-      
+
       {error && inputUrl && (
         <div className="flex items-center gap-2 mt-2 text-red-400 text-sm">
           <AlertCircle className="w-4 h-4" />
           <span>{error}</span>
         </div>
       )}
-      
+
       {validEmbedUrl && !error && (
         <div className="text-sm text-green-400 mt-2">Embed preview ready</div>
       )}
-      
+
       {validEmbedUrl && (
-        <div className={`mt-4 ${aspectClass} bg-black rounded-lg overflow-hidden relative`}>
+        <div
+          className={`mt-4 ${aspectClass} bg-black rounded-lg overflow-hidden relative`}
+        >
           {lazyPreview && !showPreview ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900 text-white">
               <Button
@@ -309,14 +417,16 @@ function VideoBlockEditor({ data, onUpdate }: { data: VideoBlockData; onUpdate: 
           )}
         </div>
       )}
-      
+
       {validEmbedUrl && (
         <div className="flex items-center gap-4 mt-3">
           <div className="flex items-center gap-2">
             <label className="text-xs text-zinc-400">Aspect:</label>
             <Select
               value={aspect}
-              onValueChange={(v) => onUpdate({ ...data, aspect: v as '16:9' | '4:3' | '1:1' })}
+              onValueChange={(v) =>
+                onUpdate({ ...data, aspect: v as "16:9" | "4:3" | "1:1" })
+              }
             >
               <SelectTrigger className="w-20 h-7 bg-zinc-800 border-zinc-700 text-xs">
                 <SelectValue />
@@ -332,7 +442,9 @@ function VideoBlockEditor({ data, onUpdate }: { data: VideoBlockData; onUpdate: 
             <input
               type="checkbox"
               checked={lazyPreview}
-              onChange={(e) => onUpdate({ ...data, lazyPreview: e.target.checked })}
+              onChange={(e) =>
+                onUpdate({ ...data, lazyPreview: e.target.checked })
+              }
               className="rounded border-zinc-600"
             />
             Lazy preview
@@ -343,10 +455,25 @@ function VideoBlockEditor({ data, onUpdate }: { data: VideoBlockData; onUpdate: 
   );
 }
 
-function BlockEditor({ block, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveDown, isFirst, isLast, isMobile, isSelected, isHovered, onSelect, onHover, dragHandleProps }: BlockEditorProps) {
+function BlockEditor({
+  block,
+  onUpdate,
+  onDelete,
+  onDuplicate,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
+  isMobile,
+  isSelected,
+  isHovered,
+  onSelect,
+  onHover,
+  dragHandleProps,
+}: BlockEditorProps) {
   const [uploading, setUploading] = useState(false);
-  
-  const showActions = isMobile ? isSelected : (isSelected || isHovered);
+
+  const showActions = isMobile ? isSelected : isSelected || isHovered;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -356,22 +483,27 @@ function BlockEditor({ block, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveD
       const url = await uploadImage(file);
       onUpdate({ ...block.data, url } as ImageBlockData);
     } catch (err) {
-      console.error('Upload failed:', err);
+      console.error("Upload failed:", err);
     } finally {
       setUploading(false);
     }
   };
 
-  const handleGridImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGridImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
     setUploading(true);
     try {
-      const urls = await Promise.all(files.map(f => uploadImage(f)));
+      const urls = await Promise.all(files.map((f) => uploadImage(f)));
       const currentUrls = (block.data as GridBlockData).urls || [];
-      onUpdate({ ...block.data, urls: [...currentUrls, ...urls] } as GridBlockData);
+      onUpdate({
+        ...block.data,
+        urls: [...currentUrls, ...urls],
+      } as GridBlockData);
     } catch (err) {
-      console.error('Upload failed:', err);
+      console.error("Upload failed:", err);
     } finally {
       setUploading(false);
     }
@@ -387,14 +519,19 @@ function BlockEditor({ block, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveD
 
   const handlePointerDown = (e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
-    if (target.closest('button, input, textarea, [contenteditable], .tiptap-editor, [data-drag-handle]')) return;
+    if (
+      target.closest(
+        "button, input, textarea, [contenteditable], .tiptap-editor, [data-drag-handle]",
+      )
+    )
+      return;
     onSelect();
   };
 
   return (
-    <div 
+    <div
       data-block-id={block.id}
-      className={`bg-zinc-900/50 rounded-xl transition-all cursor-pointer ${isSelected ? 'ring-2 ring-blue-500' : isHovered ? 'ring-1 ring-zinc-600' : ''}`}
+      className={`bg-zinc-900/50 rounded-xl transition-all cursor-pointer ${isSelected ? "ring-2 ring-blue-500" : isHovered ? "ring-1 ring-zinc-600" : ""}`}
       onPointerDown={handlePointerDown}
       onMouseEnter={() => !isMobile && onHover(true)}
       onMouseLeave={() => !isMobile && onHover(false)}
@@ -402,8 +539,8 @@ function BlockEditor({ block, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveD
       {showActions && (
         <div className="flex items-center gap-1 px-3 py-2 bg-zinc-800/80 border-b border-zinc-700 rounded-t-xl">
           {!isMobile && dragHandleProps && (
-            <div 
-              {...dragHandleProps.attributes} 
+            <div
+              {...dragHandleProps.attributes}
               {...dragHandleProps.listeners}
               className="cursor-grab active:cursor-grabbing p-1.5 rounded hover:bg-zinc-700 transition-colors touch-none"
               data-testid={`drag-handle-${block.id}`}
@@ -416,35 +553,85 @@ function BlockEditor({ block, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveD
           </span>
           {isMobile && (
             <div className="flex gap-1">
-              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onMoveUp(); }} disabled={isFirst} data-testid={`button-move-up-${block.id}`}>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveUp();
+                }}
+                disabled={isFirst}
+                data-testid={`button-move-up-${block.id}`}
+              >
                 <ChevronUp className="w-4 h-4" />
               </Button>
-              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onMoveDown(); }} disabled={isLast} data-testid={`button-move-down-${block.id}`}>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveDown();
+                }}
+                disabled={isLast}
+                data-testid={`button-move-down-${block.id}`}
+              >
                 <ChevronDown className="w-4 h-4" />
               </Button>
             </div>
           )}
-          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDuplicate(); }} data-testid={`button-duplicate-${block.id}`}>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDuplicate();
+            }}
+            data-testid={`button-duplicate-${block.id}`}
+          >
             <Copy className="w-4 h-4" />
           </Button>
-          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-red-400" data-testid={`button-delete-${block.id}`}>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="text-red-400"
+            data-testid={`button-delete-${block.id}`}
+          >
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
       )}
-      
+
       <div className="p-4">
-        {block.type === 'image' && (
+        {block.type === "image" && (
           <div>
             {(block.data as ImageBlockData).url ? (
               <div className="relative">
-                <img src={(block.data as ImageBlockData).url} alt="" className="w-full h-auto rounded-lg" />
+                <img
+                  src={(block.data as ImageBlockData).url}
+                  alt=""
+                  className="w-full h-auto rounded-lg"
+                />
                 {isSelected && (
                   <label className="absolute top-2 right-2">
                     <Button size="sm" variant="secondary" asChild>
-                      <span>{uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Replace'}</span>
+                      <span>
+                        {uploading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          "Replace"
+                        )}
+                      </span>
                     </Button>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
                   </label>
                 )}
               </div>
@@ -455,43 +642,62 @@ function BlockEditor({ block, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveD
                 ) : (
                   <>
                     <Image className="w-8 h-8 text-zinc-600 mb-2" />
-                    <span className="text-sm text-zinc-500">Click to upload</span>
+                    <span className="text-sm text-zinc-500">
+                      Click to upload
+                    </span>
                   </>
                 )}
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
               </label>
             )}
           </div>
         )}
 
-        {block.type === 'text' && (
+        {block.type === "text" && (
           <div className="tiptap-editor" onClick={(e) => e.stopPropagation()}>
             <TipTapEditor
               content={textData.json || null}
-              onChange={(json) => onUpdate({ ...block.data, json } as TextBlockData)}
+              onChange={(json) =>
+                onUpdate({ ...block.data, json } as TextBlockData)
+              }
             />
           </div>
         )}
 
-        {block.type === 'video' && (
+        {block.type === "video" && (
           <VideoBlockEditor
             data={block.data as VideoBlockData}
             onUpdate={(data) => onUpdate(data)}
           />
         )}
 
-        {block.type === 'grid' && (
+        {block.type === "grid" && (
           <div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
               {((block.data as GridBlockData).urls || []).map((url, idx) => (
-                <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group/img">
-                  <img src={url} alt="" className="w-full h-full object-cover" />
+                <div
+                  key={idx}
+                  className="relative aspect-square rounded-lg overflow-hidden group/img"
+                >
+                  <img
+                    src={url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
                   {isSelected && (
                     <Button
                       size="icon"
                       variant="destructive"
                       className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/img:opacity-100 transition-opacity"
-                      onClick={(e) => { e.stopPropagation(); removeGridImage(idx); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeGridImage(idx);
+                      }}
                     >
                       <X className="w-3 h-3" />
                     </Button>
@@ -505,32 +711,41 @@ function BlockEditor({ block, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveD
                   ) : (
                     <Plus className="w-6 h-6 text-zinc-600" />
                   )}
-                  <input type="file" accept="image/*" multiple className="hidden" onChange={handleGridImageUpload} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleGridImageUpload}
+                  />
                 </label>
               )}
             </div>
           </div>
         )}
 
-        {block.type === 'divider' && (
+        {block.type === "divider" && (
           <div className="py-4">
-            <hr 
-              className="border-zinc-700" 
-              style={{ 
-                borderStyle: (block.data as DividerBlockData).style || 'solid',
+            <hr
+              className="border-zinc-700"
+              style={{
+                borderStyle: (block.data as DividerBlockData).style || "solid",
                 borderWidth: `${(block.data as DividerBlockData).thickness || 1}px 0 0 0`,
-                opacity: (block.data as DividerBlockData).opacity ?? 0.5
-              }} 
+                opacity: (block.data as DividerBlockData).opacity ?? 0.5,
+              }}
             />
           </div>
         )}
 
-        {block.type === 'spacer' && (
-          <div 
+        {block.type === "spacer" && (
+          <div
             className="bg-zinc-800/30 rounded flex items-center justify-center text-zinc-600 text-xs"
-            style={{ height: `${(block.data as SpacerBlockData).height || 48}px` }}
+            style={{
+              height: `${(block.data as SpacerBlockData).height || 48}px`,
+            }}
           >
-            {isSelected && `${(block.data as SpacerBlockData).height || 48}px spacer`}
+            {isSelected &&
+              `${(block.data as SpacerBlockData).height || 48}px spacer`}
           </div>
         )}
       </div>
@@ -538,7 +753,7 @@ function BlockEditor({ block, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveD
   );
 }
 
-type SortableBlockEditorProps = Omit<BlockEditorProps, 'dragHandleProps'> & {
+type SortableBlockEditorProps = Omit<BlockEditorProps, "dragHandleProps"> & {
   id: string;
 };
 
@@ -556,15 +771,12 @@ function SortableBlockEditor(props: SortableBlockEditorProps) {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 1000 : 'auto',
+    zIndex: isDragging ? 1000 : "auto",
   };
 
   return (
     <div ref={setNodeRef} style={style}>
-      <BlockEditor
-        {...props}
-        dragHandleProps={{ attributes, listeners }}
-      />
+      <BlockEditor {...props} dragHandleProps={{ attributes, listeners }} />
     </div>
   );
 }
@@ -578,12 +790,12 @@ function AddBlockButton({ onAdd, position }: AddBlockButtonProps) {
   const [showMenu, setShowMenu] = useState(false);
 
   const blockTypes: { type: BlockType; icon: typeof Image; label: string }[] = [
-    { type: 'image', icon: Image, label: 'Image' },
-    { type: 'text', icon: Type, label: 'Text' },
-    { type: 'video', icon: Video, label: 'Video' },
-    { type: 'grid', icon: Grid3X3, label: 'Grid' },
-    { type: 'divider', icon: Minus, label: 'Divider' },
-    { type: 'spacer', icon: Square, label: 'Spacer' },
+    { type: "image", icon: Image, label: "Image" },
+    { type: "text", icon: Type, label: "Text" },
+    { type: "video", icon: Video, label: "Video" },
+    { type: "grid", icon: Grid3X3, label: "Grid" },
+    { type: "divider", icon: Minus, label: "Divider" },
+    { type: "spacer", icon: Square, label: "Spacer" },
   ];
 
   return (
@@ -599,12 +811,18 @@ function AddBlockButton({ onAdd, position }: AddBlockButtonProps) {
       </button>
       {showMenu && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setShowMenu(false)}
+          />
           <div className="absolute top-full mt-2 z-50 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl p-2 min-w-[160px]">
             {blockTypes.map(({ type, icon: Icon, label }) => (
               <button
                 key={type}
-                onClick={() => { onAdd(type); setShowMenu(false); }}
+                onClick={() => {
+                  onAdd(type);
+                  setShowMenu(false);
+                }}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 rounded-md transition-colors"
                 data-testid={`menu-add-${type}`}
               >
@@ -621,17 +839,19 @@ function AddBlockButton({ onAdd, position }: AddBlockButtonProps) {
 
 function ProjectBuilder({ projectId }: { projectId: string }) {
   const [, navigate] = useLocation();
-  const { data: existingProject, isLoading: loadingProject } = useProject(projectId);
-  const { data: blocks = [], isLoading: loadingBlocks } = useProjectBlocks(projectId);
-  
+  const { data: existingProject, isLoading: loadingProject } =
+    useProject(projectId);
+  const { data: blocks = [], isLoading: loadingBlocks } =
+    useProjectBlocks(projectId);
+
   const updateProject = useUpdateProject();
   const createBlock = useCreateBlock();
   const updateBlock = useUpdateBlock();
   const deleteBlock = useDeleteBlock();
   const reorderBlocks = useReorderBlocks();
 
-  const [title, setTitle] = useState('Untitled');
-  const [year, setYear] = useState('2026');
+  const [title, setTitle] = useState("Untitled");
+  const [year, setYear] = useState("2026");
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [localBlocks, setLocalBlocks] = useState<ProjectBlock[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -643,16 +863,20 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
   const [showMobileAddMenu, setShowMobileAddMenu] = useState(false);
   const [deletedBlockIds, setDeletedBlockIds] = useState<string[]>([]);
-  
-  const initialDataRef = useRef<{ title: string; year: string; coverUrl: string | null } | null>(null);
+
+  const initialDataRef = useRef<{
+    title: string;
+    year: string;
+    coverUrl: string | null;
+  } | null>(null);
   const initialBlocksRef = useRef<ProjectBlock[] | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   useEffect(() => {
@@ -663,7 +887,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
       initialDataRef.current = {
         title: existingProject.title,
         year: existingProject.year.toString(),
-        coverUrl: existingProject.cover_url
+        coverUrl: existingProject.cover_url,
       };
     }
   }, [existingProject]);
@@ -677,7 +901,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     if (!initialDataRef.current) return;
-    const changed = 
+    const changed =
       title !== initialDataRef.current.title ||
       year !== initialDataRef.current.year ||
       coverUrl !== initialDataRef.current.coverUrl;
@@ -688,11 +912,11 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges || hasBlockChanges) {
         e.preventDefault();
-        e.returnValue = '';
+        e.returnValue = "";
       }
     };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedChanges, hasBlockChanges]);
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -700,111 +924,116 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
     if (!file) return;
     setUploading(true);
     try {
-      const url = await uploadImage(file, 'covers');
+      const url = await uploadImage(file, "covers");
       setCoverUrl(url);
     } catch (err) {
-      console.error('Upload failed:', err);
+      console.error("Upload failed:", err);
     } finally {
       setUploading(false);
     }
   };
 
   const addBlock = async (type: BlockType, atPosition?: number) => {
-    let data: ProjectBlock['data'];
+    let data: ProjectBlock["data"];
     switch (type) {
-      case 'image':
-        data = { url: '' };
+      case "image":
+        data = { url: "" };
         break;
-      case 'text':
-        data = { json: { type: 'doc', content: [] } };
+      case "text":
+        data = { json: { type: "doc", content: [] } };
         break;
-      case 'video':
-        data = { originalUrl: '', embedUrl: '' };
+      case "video":
+        data = { originalUrl: "", embedUrl: "" };
         break;
-      case 'grid':
+      case "grid":
         data = { urls: [], columnsDesktop: 3, columnsMobile: 2, gap: 8 };
         break;
-      case 'divider':
-        data = { style: 'solid', thickness: 1, opacity: 0.5, width: 'normal' };
+      case "divider":
+        data = { style: "solid", thickness: 1, opacity: 0.5, width: "normal" };
         break;
-      case 'spacer':
+      case "spacer":
         data = { height: 48 };
         break;
     }
 
     const insertAt = atPosition ?? localBlocks.length;
-    
+
     const newBlock = await createBlock.mutateAsync({
       project_id: projectId,
       type,
       data,
       sort_order: insertAt,
     });
-    
-    setLocalBlocks(prev => {
-      const updated = prev.map((b, i) => 
-        i >= insertAt ? { ...b, sort_order: b.sort_order + 1 } : b
+
+    setLocalBlocks((prev) => {
+      const updated = prev.map((b, i) =>
+        i >= insertAt ? { ...b, sort_order: b.sort_order + 1 } : b,
       );
       const inserted = [...updated];
       inserted.splice(insertAt, 0, newBlock);
       return inserted.map((b, i) => ({ ...b, sort_order: i }));
     });
-    
+
     if (initialBlocksRef.current === null) {
       initialBlocksRef.current = [];
     }
     initialBlocksRef.current = [...(initialBlocksRef.current || []), newBlock];
-    
+
     setSelectedBlockId(newBlock.id);
     setShowMobileAddMenu(false);
   };
 
-  const handleBlockUpdate = (blockId: string, data: ProjectBlock['data']) => {
-    setLocalBlocks(prev => prev.map(b => b.id === blockId ? { ...b, data } : b));
+  const handleBlockUpdate = (blockId: string, data: ProjectBlock["data"]) => {
+    setLocalBlocks((prev) =>
+      prev.map((b) => (b.id === blockId ? { ...b, data } : b)),
+    );
     setHasBlockChanges(true);
   };
 
   const handleBlockDelete = (blockId: string) => {
-    setLocalBlocks(prev => prev.filter(b => b.id !== blockId));
-    setDeletedBlockIds(prev => [...prev, blockId]);
+    setLocalBlocks((prev) => prev.filter((b) => b.id !== blockId));
+    setDeletedBlockIds((prev) => [...prev, blockId]);
     setHasBlockChanges(true);
     if (selectedBlockId === blockId) setSelectedBlockId(null);
   };
 
   const handleBlockDuplicate = async (block: ProjectBlock) => {
-    const currentIndex = localBlocks.findIndex(b => b.id === block.id);
+    const currentIndex = localBlocks.findIndex((b) => b.id === block.id);
     const insertAt = currentIndex + 1;
-    
+
     const newBlock = await createBlock.mutateAsync({
       project_id: projectId,
       type: block.type,
       data: { ...block.data },
       sort_order: insertAt,
     });
-    
-    setLocalBlocks(prev => {
-      const updated = prev.map((b, i) => 
-        i >= insertAt ? { ...b, sort_order: b.sort_order + 1 } : b
+
+    setLocalBlocks((prev) => {
+      const updated = prev.map((b, i) =>
+        i >= insertAt ? { ...b, sort_order: b.sort_order + 1 } : b,
       );
       const inserted = [...updated];
       inserted.splice(insertAt, 0, newBlock);
       return inserted.map((b, i) => ({ ...b, sort_order: i }));
     });
-    
+
     if (initialBlocksRef.current === null) {
       initialBlocksRef.current = [];
     }
     initialBlocksRef.current = [...(initialBlocksRef.current || []), newBlock];
-    
+
     setSelectedBlockId(newBlock.id);
   };
 
-  const moveBlock = (index: number, direction: 'up' | 'down') => {
+  const moveBlock = (index: number, direction: "up" | "down") => {
     const newBlocks = [...localBlocks];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= newBlocks.length) return;
-    
-    [newBlocks[index], newBlocks[targetIndex]] = [newBlocks[targetIndex], newBlocks[index]];
+
+    [newBlocks[index], newBlocks[targetIndex]] = [
+      newBlocks[targetIndex],
+      newBlocks[index],
+    ];
     const reordered = newBlocks.map((b, i) => ({ ...b, sort_order: i }));
     setLocalBlocks(reordered);
     setHasBlockChanges(true);
@@ -818,67 +1047,74 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (!over || active.id === over.id) return;
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
 
-    const oldIndex = localBlocks.findIndex((b) => b.id === active.id);
-    const newIndex = localBlocks.findIndex((b) => b.id === over.id);
+      if (!over || active.id === over.id) return;
 
-    if (oldIndex === -1 || newIndex === -1) return;
+      const oldIndex = localBlocks.findIndex((b) => b.id === active.id);
+      const newIndex = localBlocks.findIndex((b) => b.id === over.id);
 
-    const newBlocks = arrayMove(localBlocks, oldIndex, newIndex);
-    const reordered = newBlocks.map((b, i) => ({ ...b, sort_order: i }));
-    setLocalBlocks(reordered);
-    setHasBlockChanges(true);
-  }, [localBlocks]);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const newBlocks = arrayMove(localBlocks, oldIndex, newIndex);
+      const reordered = newBlocks.map((b, i) => ({ ...b, sort_order: i }));
+      setLocalBlocks(reordered);
+      setHasBlockChanges(true);
+    },
+    [localBlocks],
+  );
 
   const handleSave = async () => {
     if (!title.trim()) {
-      alert('Please enter a project title');
+      alert("Please enter a project title");
       return;
     }
-    
+
     setSaving(true);
     try {
       await updateProject.mutateAsync({
         id: projectId,
-        updates: { title, year: parseInt(year), cover_url: coverUrl }
+        updates: { title, year: parseInt(year), cover_url: coverUrl },
       });
-      
+
       for (const deletedId of deletedBlockIds) {
         try {
           await deleteBlock.mutateAsync({ id: deletedId, projectId });
         } catch (err) {
-          console.warn('Block already deleted:', deletedId);
+          console.warn("Block already deleted:", deletedId);
         }
       }
-      
+
       for (const block of localBlocks) {
-        const original = initialBlocksRef.current?.find(b => b.id === block.id);
+        const original = initialBlocksRef.current?.find(
+          (b) => b.id === block.id,
+        );
         if (original) {
-          if (JSON.stringify(original.data) !== JSON.stringify(block.data) || 
-              original.sort_order !== block.sort_order) {
-            await updateBlock.mutateAsync({ 
-              id: block.id, 
-              projectId, 
-              updates: { data: block.data, sort_order: block.sort_order } 
+          if (
+            JSON.stringify(original.data) !== JSON.stringify(block.data) ||
+            original.sort_order !== block.sort_order
+          ) {
+            await updateBlock.mutateAsync({
+              id: block.id,
+              projectId,
+              updates: { data: block.data, sort_order: block.sort_order },
             });
           }
         }
       }
-      
+
       initialDataRef.current = { title, year, coverUrl };
       initialBlocksRef.current = [...localBlocks];
       setDeletedBlockIds([]);
       setHasUnsavedChanges(false);
       setHasBlockChanges(false);
     } catch (err) {
-      console.error('Save failed:', err);
+      console.error("Save failed:", err);
     } finally {
       setSaving(false);
     }
@@ -886,19 +1122,25 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
 
   const handleBack = () => {
     if (hasUnsavedChanges || hasBlockChanges) {
-      if (!confirm('You have unsaved changes. Leave anyway?')) return;
+      if (!confirm("You have unsaved changes. Leave anyway?")) return;
     }
-    navigate('/admin');
+    navigate("/admin");
   };
 
   useEffect(() => {
     const handleClickOutside = (e: PointerEvent) => {
       if (!(e.target instanceof Element)) return;
-      if (e.target.closest('[data-block-id], [data-inspector-panel], [data-bottom-sheet]')) return;
+      if (
+        e.target.closest(
+          "[data-block-id], [data-inspector-panel], [data-bottom-sheet]",
+        )
+      )
+        return;
       setSelectedBlockId(null);
     };
-    document.addEventListener('pointerdown', handleClickOutside);
-    return () => document.removeEventListener('pointerdown', handleClickOutside);
+    document.addEventListener("pointerdown", handleClickOutside);
+    return () =>
+      document.removeEventListener("pointerdown", handleClickOutside);
   }, []);
 
   if (loadingProject || loadingBlocks) {
@@ -910,12 +1152,12 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
   }
 
   const blockTypes: { type: BlockType; icon: typeof Image; label: string }[] = [
-    { type: 'image', icon: Image, label: 'Image' },
-    { type: 'text', icon: Type, label: 'Text' },
-    { type: 'video', icon: Video, label: 'Video' },
-    { type: 'grid', icon: Grid3X3, label: 'Grid' },
-    { type: 'divider', icon: Minus, label: 'Divider' },
-    { type: 'spacer', icon: Square, label: 'Spacer' },
+    { type: "image", icon: Image, label: "Image" },
+    { type: "text", icon: Type, label: "Text" },
+    { type: "video", icon: Video, label: "Video" },
+    { type: "grid", icon: Grid3X3, label: "Grid" },
+    { type: "divider", icon: Minus, label: "Divider" },
+    { type: "spacer", icon: Square, label: "Spacer" },
   ];
 
   return (
@@ -931,7 +1173,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          
+
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -939,9 +1181,12 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
             className="flex-1 min-w-0 max-w-md bg-transparent border-none text-lg md:text-xl text-white placeholder:text-zinc-600 focus-visible:ring-0 px-0"
             data-testid="input-project-title"
           />
-          
+
           <Select value={year} onValueChange={setYear}>
-            <SelectTrigger className="w-20 md:w-24 bg-zinc-800 border-zinc-700 flex-shrink-0" data-testid="select-year">
+            <SelectTrigger
+              className="w-20 md:w-24 bg-zinc-800 border-zinc-700 flex-shrink-0"
+              data-testid="select-year"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -953,7 +1198,9 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
           </Select>
 
           {(hasUnsavedChanges || hasBlockChanges) && (
-            <span className="text-xs text-amber-500 hidden md:block flex-shrink-0">Unsaved</span>
+            <span className="text-xs text-amber-500 hidden md:block flex-shrink-0">
+              Unsaved
+            </span>
           )}
 
           <Button
@@ -962,33 +1209,55 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
             className="bg-blue-600 flex-shrink-0"
             data-testid="button-save-project"
           >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 md:mr-2" />}
+            {saving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4 md:mr-2" />
+            )}
             <span className="hidden md:inline">Save</span>
           </Button>
         </div>
       </header>
 
       <div className="flex-1 flex min-h-0">
-        <main 
+        <main
           ref={canvasRef}
-          className="flex-1 overflow-y-auto overscroll-contain pb-24 md:pb-8"
-          style={{ WebkitOverflowScrolling: 'touch' }}
+          className="flex-1 overflow-y-auto overscroll-contain pb-24 md:pb-8 custom-scrollbar"
+          style={{ WebkitOverflowScrolling: "touch" }}
         >
           <div className="max-w-3xl mx-auto p-4 md:p-8 space-y-2">
-            <div 
-              className={`bg-zinc-900/50 rounded-xl transition-all ${selectedBlockId === 'cover' ? 'ring-2 ring-blue-500' : 'hover:ring-1 hover:ring-zinc-700'}`}
-              onClick={(e) => { e.stopPropagation(); setSelectedBlockId('cover'); }}
+            <div
+              className={`bg-zinc-900/50 rounded-xl transition-all ${selectedBlockId === "cover" ? "ring-2 ring-blue-500" : "hover:ring-1 hover:ring-zinc-700"}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedBlockId("cover");
+              }}
             >
               <div className="p-4">
                 {coverUrl ? (
                   <div className="relative">
-                    <img src={coverUrl} alt="Cover" className="w-full aspect-video object-cover rounded-lg" />
-                    {selectedBlockId === 'cover' && (
+                    <img
+                      src={coverUrl}
+                      alt="Cover"
+                      className="w-full aspect-video object-cover rounded-lg"
+                    />
+                    {selectedBlockId === "cover" && (
                       <label className="absolute top-2 right-2">
                         <Button size="sm" variant="secondary" asChild>
-                          <span>{uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Replace'}</span>
+                          <span>
+                            {uploading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              "Replace"
+                            )}
+                          </span>
                         </Button>
-                        <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleCoverUpload}
+                        />
                       </label>
                     )}
                   </div>
@@ -999,10 +1268,17 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
                     ) : (
                       <>
                         <Image className="w-10 h-10 text-zinc-600 mb-2" />
-                        <span className="text-sm text-zinc-500">Upload cover image</span>
+                        <span className="text-sm text-zinc-500">
+                          Upload cover image
+                        </span>
                       </>
                     )}
-                    <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleCoverUpload}
+                    />
                   </label>
                 )}
               </div>
@@ -1028,17 +1304,22 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
                         onUpdate={(data) => handleBlockUpdate(block.id, data)}
                         onDelete={() => handleBlockDelete(block.id)}
                         onDuplicate={() => handleBlockDuplicate(block)}
-                        onMoveUp={() => moveBlock(index, 'up')}
-                        onMoveDown={() => moveBlock(index, 'down')}
+                        onMoveUp={() => moveBlock(index, "up")}
+                        onMoveDown={() => moveBlock(index, "down")}
                         isFirst={index === 0}
                         isLast={index === localBlocks.length - 1}
                         isMobile={isMobile}
                         isSelected={selectedBlockId === block.id}
                         isHovered={hoveredBlockId === block.id}
                         onSelect={() => setSelectedBlockId(block.id)}
-                        onHover={(hovered) => setHoveredBlockId(hovered ? block.id : null)}
+                        onHover={(hovered) =>
+                          setHoveredBlockId(hovered ? block.id : null)
+                        }
                       />
-                      <AddBlockButton onAdd={(type) => addBlock(type, index + 1)} position={index + 1} />
+                      <AddBlockButton
+                        onAdd={(type) => addBlock(type, index + 1)}
+                        position={index + 1}
+                      />
                     </div>
                   ))}
                 </SortableContext>
@@ -1051,17 +1332,22 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
                     onUpdate={(data) => handleBlockUpdate(block.id, data)}
                     onDelete={() => handleBlockDelete(block.id)}
                     onDuplicate={() => handleBlockDuplicate(block)}
-                    onMoveUp={() => moveBlock(index, 'up')}
-                    onMoveDown={() => moveBlock(index, 'down')}
+                    onMoveUp={() => moveBlock(index, "up")}
+                    onMoveDown={() => moveBlock(index, "down")}
                     isFirst={index === 0}
                     isLast={index === localBlocks.length - 1}
                     isMobile={isMobile}
                     isSelected={selectedBlockId === block.id}
                     isHovered={hoveredBlockId === block.id}
                     onSelect={() => setSelectedBlockId(block.id)}
-                    onHover={(hovered) => setHoveredBlockId(hovered ? block.id : null)}
+                    onHover={(hovered) =>
+                      setHoveredBlockId(hovered ? block.id : null)
+                    }
                   />
-                  <AddBlockButton onAdd={(type) => addBlock(type, index + 1)} position={index + 1} />
+                  <AddBlockButton
+                    onAdd={(type) => addBlock(type, index + 1)}
+                    position={index + 1}
+                  />
                 </div>
               ))
             )}
@@ -1075,11 +1361,16 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
           </div>
         </main>
 
-        <aside className="hidden md:flex flex-col w-64 border-l border-zinc-800 bg-zinc-900/50 flex-shrink-0" data-inspector-panel>
+        <aside
+          className="hidden md:flex flex-col w-64 border-l border-zinc-800 bg-zinc-900/50 flex-shrink-0"
+          data-inspector-panel
+        >
           <div className="p-4 border-b border-zinc-800">
-            <p className="text-xs text-zinc-500 uppercase tracking-wide">Add Content</p>
+            <p className="text-xs text-zinc-500 uppercase tracking-wide">
+              Add Content
+            </p>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
             {blockTypes.map(({ type, icon: Icon, label }) => (
               <button
                 key={type}
@@ -1097,7 +1388,10 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
         </aside>
       </div>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 z-30" data-bottom-sheet>
+      <div
+        className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 z-30"
+        data-bottom-sheet
+      >
         <div className="flex gap-1 p-2 justify-center">
           {blockTypes.slice(0, 4).map(({ type, icon: Icon }) => (
             <Button
@@ -1123,7 +1417,10 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
         </div>
         {showMobileAddMenu && (
           <>
-            <div className="fixed inset-0 z-40 bg-black/50" onClick={() => setShowMobileAddMenu(false)} />
+            <div
+              className="fixed inset-0 z-40 bg-black/50"
+              onClick={() => setShowMobileAddMenu(false)}
+            />
             <div className="absolute bottom-full left-0 right-0 bg-zinc-900 border-t border-zinc-800 p-4 z-50">
               <div className="grid grid-cols-3 gap-2">
                 {blockTypes.map(({ type, icon: Icon, label }) => (
@@ -1154,14 +1451,14 @@ function NewProjectRedirect() {
     const create = async () => {
       try {
         const newProject = await createProject.mutateAsync({
-          title: 'Untitled',
+          title: "Untitled",
           year: 2026,
-          cover_url: null
+          cover_url: null,
         });
         navigate(`/admin/projects/${newProject.id}`, { replace: true });
       } catch (err) {
-        console.error('Failed to create project:', err);
-        setError('Failed to create project');
+        console.error("Failed to create project:", err);
+        setError("Failed to create project");
       }
     };
     create();
@@ -1171,7 +1468,7 @@ function NewProjectRedirect() {
     return (
       <div className="h-[100dvh] bg-zinc-950 flex flex-col items-center justify-center gap-4">
         <p className="text-red-400">{error}</p>
-        <Button onClick={() => navigate('/admin')}>Back to Projects</Button>
+        <Button onClick={() => navigate("/admin")}>Back to Projects</Button>
       </div>
     );
   }
@@ -1185,9 +1482,9 @@ function NewProjectRedirect() {
 
 export default function Admin() {
   const { user, loading: authLoading, signIn } = useAuth();
-  const [matchList] = useRoute('/admin');
-  const [matchNew] = useRoute('/admin/projects/new');
-  const [matchEdit, params] = useRoute('/admin/projects/:id');
+  const [matchList] = useRoute("/admin");
+  const [matchNew] = useRoute("/admin/projects/new");
+  const [matchEdit, params] = useRoute("/admin/projects/:id");
 
   if (authLoading) {
     return (

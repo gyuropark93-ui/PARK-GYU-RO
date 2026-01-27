@@ -1,11 +1,20 @@
-import { useState, useEffect, useCallback } from 'react';
-import { X, Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
-import { useProjectsByYear, useProjectBlocks } from '@/hooks/use-projects';
-import { ProjectCard } from './ProjectCard';
-import type { Project, ProjectBlock, ImageBlockData, TextBlockData, VideoBlockData, GridBlockData, DividerBlockData, SpacerBlockData } from '@/lib/supabase';
-import { toEmbedUrl, getAspectRatioClass } from '@/lib/videoEmbed';
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
+import { useState, useEffect, useCallback } from "react";
+import { X, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
+import { useProjectsByYear, useProjectBlocks } from "@/hooks/use-projects";
+import { ProjectCard } from "./ProjectCard";
+import type {
+  Project,
+  ProjectBlock,
+  ImageBlockData,
+  TextBlockData,
+  VideoBlockData,
+  GridBlockData,
+  DividerBlockData,
+  SpacerBlockData,
+} from "@/lib/supabase";
+import { toEmbedUrl, getAspectRatioClass } from "@/lib/videoEmbed";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 
 interface YearProjectsPanelProps {
   year: number;
@@ -16,13 +25,15 @@ function ImageBlock({ data }: { data: ImageBlockData }) {
   const [loaded, setLoaded] = useState(false);
   return (
     <div className="w-full relative">
-      {!loaded && <div className="aspect-video bg-zinc-800 animate-pulse rounded-lg" />}
-      <img 
-        src={data.url} 
-        alt="" 
+      {!loaded && (
+        <div className="aspect-video bg-zinc-800 animate-pulse rounded-lg" />
+      )}
+      <img
+        src={data.url}
+        alt=""
         loading="lazy"
         onLoad={() => setLoaded(true)}
-        className={`w-full h-auto object-cover rounded-lg transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0 absolute inset-0'}`}
+        className={`w-full h-auto object-cover rounded-lg transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0 absolute inset-0"}`}
       />
     </div>
   );
@@ -31,7 +42,15 @@ function ImageBlock({ data }: { data: ImageBlockData }) {
 function TextBlock({ data }: { data: TextBlockData }) {
   const editor = useEditor({
     extensions: [StarterKit],
-    content: data.json || { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: data.markdown || '' }] }] },
+    content: data.json || {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: data.markdown || "" }],
+        },
+      ],
+    },
     editable: false,
   });
 
@@ -45,7 +64,7 @@ function TextBlock({ data }: { data: TextBlockData }) {
     return (
       <div className="max-w-3xl mx-auto px-4 md:px-0">
         <p className="text-zinc-300 whitespace-pre-wrap leading-relaxed text-base md:text-lg">
-          {data.markdown || ''}
+          {data.markdown || ""}
         </p>
       </div>
     );
@@ -58,15 +77,23 @@ function TextBlock({ data }: { data: TextBlockData }) {
   );
 }
 
-function VideoBlock({ data, isHero = false }: { data: VideoBlockData; isHero?: boolean }) {
-  const rawUrl = data.originalUrl || data.embedUrl || '';
+function VideoBlock({
+  data,
+  isHero = false,
+}: {
+  data: VideoBlockData;
+  isHero?: boolean;
+}) {
+  const rawUrl = data.originalUrl || data.embedUrl || "";
   const result = toEmbedUrl(rawUrl);
   const safeEmbedUrl = result.embedUrl || data.embedUrl;
   const aspectClass = getAspectRatioClass(data.aspect);
-  
+
   if (!safeEmbedUrl) {
     return (
-      <div className={`w-full ${isHero ? '' : 'max-w-4xl mx-auto px-4 md:px-0'}`}>
+      <div
+        className={`w-full ${isHero ? "" : "max-w-4xl mx-auto px-4 md:px-0"}`}
+      >
         <div className="aspect-video w-full bg-zinc-800 rounded-lg flex items-center justify-center gap-2 text-zinc-400">
           <AlertCircle className="w-5 h-5" />
           <span>Video link invalid. Please update in admin.</span>
@@ -74,10 +101,12 @@ function VideoBlock({ data, isHero = false }: { data: VideoBlockData; isHero?: b
       </div>
     );
   }
-  
+
   return (
-    <div className={`w-full ${isHero ? '' : 'max-w-4xl mx-auto px-4 md:px-0'}`}>
-      <div className={`${aspectClass} w-full bg-black rounded-lg overflow-hidden`}>
+    <div className={`w-full ${isHero ? "" : "max-w-4xl mx-auto px-4 md:px-0"}`}>
+      <div
+        className={`${aspectClass} w-full bg-black rounded-lg overflow-hidden`}
+      >
         <iframe
           src={safeEmbedUrl}
           className="w-full h-full"
@@ -96,10 +125,13 @@ function GridBlock({ data }: { data: GridBlockData }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 px-4 md:px-0">
       {data.urls.map((url, idx) => (
-        <div key={idx} className="relative aspect-square overflow-hidden rounded-lg">
-          <img 
-            src={url} 
-            alt="" 
+        <div
+          key={idx}
+          className="relative aspect-square overflow-hidden rounded-lg"
+        >
+          <img
+            src={url}
+            alt=""
             loading="lazy"
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
           />
@@ -112,13 +144,13 @@ function GridBlock({ data }: { data: GridBlockData }) {
 function DividerBlock({ data }: { data: DividerBlockData }) {
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-0 py-4">
-      <hr 
-        className="border-zinc-700" 
-        style={{ 
-          borderStyle: data.style || 'solid',
+      <hr
+        className="border-zinc-700"
+        style={{
+          borderStyle: data.style || "solid",
           borderWidth: `${data.thickness || 1}px 0 0 0`,
-          opacity: data.opacity ?? 0.5
-        }} 
+          opacity: data.opacity ?? 0.5,
+        }}
       />
     </div>
   );
@@ -130,34 +162,36 @@ function SpacerBlock({ data }: { data: SpacerBlockData }) {
 
 function BlockRenderer({ block }: { block: ProjectBlock }) {
   switch (block.type) {
-    case 'image':
+    case "image":
       return <ImageBlock data={block.data as ImageBlockData} />;
-    case 'text':
+    case "text":
       return <TextBlock data={block.data as TextBlockData} />;
-    case 'video':
+    case "video":
       return <VideoBlock data={block.data as VideoBlockData} />;
-    case 'grid':
+    case "grid":
       return <GridBlock data={block.data as GridBlockData} />;
-    case 'divider':
+    case "divider":
       return <DividerBlock data={block.data as DividerBlockData} />;
-    case 'spacer':
+    case "spacer":
       return <SpacerBlock data={block.data as SpacerBlockData} />;
     default:
       return null;
   }
 }
 
-function ProjectDetailView({ 
-  project, 
-  onBack 
-}: { 
-  project: Project; 
+function ProjectDetailView({
+  project,
+  onBack,
+}: {
+  project: Project;
   onBack: () => void;
 }) {
   const { data: blocks, isLoading } = useProjectBlocks(project.id);
-  
-  const sortedBlocks = blocks ? [...blocks].sort((a, b) => a.sort_order - b.sort_order) : [];
-  const firstVideoBlock = sortedBlocks.find(b => b.type === 'video');
+
+  const sortedBlocks = blocks
+    ? [...blocks].sort((a, b) => a.sort_order - b.sort_order)
+    : [];
+  const firstVideoBlock = sortedBlocks.find((b) => b.type === "video");
   const hasHeroVideo = !!firstVideoBlock;
 
   return (
@@ -169,7 +203,9 @@ function ProjectDetailView({
           data-testid="button-back-to-projects"
         >
           <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-          <span className="text-sm font-medium uppercase tracking-wide">Back to Projects</span>
+          <span className="text-sm font-medium uppercase tracking-wide">
+            Back to Projects
+          </span>
         </button>
         <h2 className="hidden md:block font-display text-lg font-semibold text-white truncate max-w-md">
           {project.title}
@@ -177,7 +213,7 @@ function ProjectDetailView({
         <div className="w-20" />
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         {hasHeroVideo ? (
           <div className="w-full">
             <VideoBlock data={firstVideoBlock!.data as VideoBlockData} isHero />
@@ -185,7 +221,7 @@ function ProjectDetailView({
         ) : (
           <div className="w-full aspect-[21/9] relative overflow-hidden">
             <img
-              src={project.cover_url || ''}
+              src={project.cover_url || ""}
               alt={project.title}
               className="w-full h-full object-cover"
             />
@@ -207,7 +243,10 @@ function ProjectDetailView({
           {sortedBlocks.length > 0 && (
             <div className="space-y-8">
               {sortedBlocks
-                .filter(block => !(hasHeroVideo && block.id === firstVideoBlock?.id))
+                .filter(
+                  (block) =>
+                    !(hasHeroVideo && block.id === firstVideoBlock?.id),
+                )
                 .map((block) => (
                   <BlockRenderer key={block.id} block={block} />
                 ))}
@@ -232,9 +271,9 @@ export function YearProjectsPanel({ year, onClose }: YearProjectsPanelProps) {
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     };
   }, []);
 
@@ -263,7 +302,7 @@ export function YearProjectsPanel({ year, onClose }: YearProjectsPanelProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         if (selectedProject) {
           handleBack();
         } else {
@@ -271,26 +310,26 @@ export function YearProjectsPanel({ year, onClose }: YearProjectsPanelProps) {
         }
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedProject, handleBack, handleClose]);
 
   return (
-    <div 
+    <div
       className={`fixed inset-0 z-40 flex items-center justify-center transition-opacity duration-200 ${
-        isClosing ? 'opacity-0' : 'opacity-100'
+        isClosing ? "opacity-0" : "opacity-100"
       }`}
     >
-      <div 
+      <div
         className="absolute inset-0 bg-black/70 backdrop-blur-md"
         onClick={handleClose}
         data-testid="overlay-backdrop"
       />
-      
-      <div 
+
+      <div
         className={`relative z-10 w-full h-full md:w-[95vw] md:h-[90vh] md:max-w-7xl overflow-hidden md:rounded-2xl bg-zinc-900/95 border border-white/10 shadow-2xl transition-all duration-200 ${
-          isClosing ? 'scale-95 opacity-0' : 'scale-100 opacity-100'
-        } ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}
+          isClosing ? "scale-95 opacity-0" : "scale-100 opacity-100"
+        } ${isTransitioning ? "opacity-50" : "opacity-100"}`}
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -302,10 +341,7 @@ export function YearProjectsPanel({ year, onClose }: YearProjectsPanelProps) {
         </button>
 
         {selectedProject ? (
-          <ProjectDetailView 
-            project={selectedProject} 
-            onBack={handleBack}
-          />
+          <ProjectDetailView project={selectedProject} onBack={handleBack} />
         ) : (
           <div className="flex flex-col h-full animate-fade-in">
             <div className="sticky top-0 z-10 px-4 md:px-6 py-6 border-b border-white/10 bg-zinc-900/95 backdrop-blur-md">
@@ -317,7 +353,7 @@ export function YearProjectsPanel({ year, onClose }: YearProjectsPanelProps) {
               </p>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
               {isLoading && (
                 <div className="flex items-center justify-center py-20">
                   <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
