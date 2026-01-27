@@ -14,7 +14,7 @@ import type {
 } from "@/lib/supabase";
 import { toEmbedUrl, getAspectRatioClass } from "@/lib/videoEmbed";
 import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
+import { getSharedExtensions } from "@/lib/tiptapExtensions";
 
 interface YearProjectsPanelProps {
   year: number;
@@ -41,7 +41,7 @@ function ImageBlock({ data }: { data: ImageBlockData }) {
 
 function TextBlock({ data }: { data: TextBlockData }) {
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: getSharedExtensions(false),
     content: data.json || {
       type: "doc",
       content: [
@@ -71,7 +71,7 @@ function TextBlock({ data }: { data: TextBlockData }) {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-0 prose prose-invert prose-zinc max-w-none">
+    <div className="max-w-3xl mx-auto px-4 md:px-0 prose prose-invert prose-zinc max-w-none tiptap-content">
       <EditorContent editor={editor} />
     </div>
   );
