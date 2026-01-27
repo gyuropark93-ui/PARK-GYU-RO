@@ -179,27 +179,12 @@ function BlockRenderer({ block }: { block: ProjectBlock }) {
   }
 }
 
-function CloseButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors flex-shrink-0"
-      aria-label="Close"
-      data-testid="button-close-panel"
-    >
-      <X className="w-5 h-5 text-white" />
-    </button>
-  );
-}
-
 function ProjectDetailView({
   project,
   onBack,
-  onClose,
 }: {
   project: Project;
   onBack: () => void;
-  onClose: () => void;
 }) {
   const { data: blocks, isLoading } = useProjectBlocks(project.id);
 
@@ -211,21 +196,21 @@ function ProjectDetailView({
 
   return (
     <div className="flex flex-col h-full animate-slide-in-right">
-      <div className="sticky top-0 z-20 flex items-center justify-between gap-4 px-4 md:px-6 py-4 bg-zinc-900/95 backdrop-blur-md border-b border-white/10">
+      <div className="sticky top-0 z-20 flex items-center justify-between px-4 md:px-6 py-4 bg-zinc-900/95 backdrop-blur-md border-b border-white/10 pt-[10px] pb-[10px]">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group flex-shrink-0"
+          className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group"
           data-testid="button-back-to-projects"
         >
           <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
           <span className="text-sm font-medium uppercase tracking-wide">
-            Back
+            Back to Projects
           </span>
         </button>
-        <h2 className="hidden md:block font-display font-semibold text-white truncate text-xl lg:text-2xl flex-1 text-center">
+        <h2 className="hidden md:block font-display font-semibold text-white truncate max-w-md text-[40px] pt-[10px] pb-[10px] mt-[0px] mb-[0px]">
           {project.title}
         </h2>
-        <CloseButton onClick={onClose} />
+        <div className="w-20" />
       </div>
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {hasHeroVideo ? (
@@ -342,24 +327,25 @@ export function YearProjectsPanel({ year, onClose }: YearProjectsPanelProps) {
         } ${isTransitioning ? "opacity-50" : "opacity-100"}`}
         onClick={(e) => e.stopPropagation()}
       >
+        <button
+          onClick={handleClose}
+          className="absolute top-8 right-4 z-30 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
+          data-testid="button-close-panel"
+        >
+          <X className="w-5 h-5 text-white" />
+        </button>
+
         {selectedProject ? (
-          <ProjectDetailView
-            project={selectedProject}
-            onBack={handleBack}
-            onClose={handleClose}
-          />
+          <ProjectDetailView project={selectedProject} onBack={handleBack} />
         ) : (
           <div className="flex flex-col h-full animate-fade-in">
-            <div className="sticky top-0 z-10 flex items-center justify-between gap-4 px-4 md:px-6 py-6 border-b border-white/10 bg-zinc-900/95 backdrop-blur-md">
-              <div className="flex-1 min-w-0">
-                <h2 className="font-display text-2xl md:text-3xl font-bold text-white">
-                  {year} Projects
-                </h2>
-                <p className="text-sm text-zinc-400 mt-1">
-                  {projects?.length || 0} projects
-                </p>
-              </div>
-              <CloseButton onClick={handleClose} />
+            <div className="sticky top-0 z-10 px-4 md:px-6 py-6 border-b border-white/10 bg-zinc-900/95 backdrop-blur-md">
+              <h2 className="font-display text-2xl md:text-3xl font-bold text-white">
+                {year} Projects
+              </h2>
+              <p className="text-sm text-zinc-400 mt-1">
+                {projects?.length || 0} projects
+              </p>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { NavButton } from "@/components/NavButton";
 import { YearIndicator } from "@/components/YearIndicator";
 import { YearProjectsPanel } from "@/components/YearProjectsPanel";
@@ -13,13 +13,13 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentYear, setCurrentYear] = useState(2026);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [transitionType, setTransitionType] = useState<
-    "forward" | "back" | null
-  >(null);
+  const [transitionType, setTransitionType] = useState<"forward" | "back" | null>(null);
   const [targetYear, setTargetYear] = useState<number | null>(null);
   const [showProjects, setShowProjects] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
 
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const forwardVideoRef = useRef<HTMLVideoElement>(null);
+  const backVideoRef = useRef<HTMLVideoElement>(null);
   const hasSwappedRef = useRef(false);
   const logVisit = useLogVisit();
 
@@ -30,89 +30,49 @@ export default function Home() {
     });
   }, []);
 
+  const getActiveVideo = useCallback(() => {
+    if (transitionType === "forward") return forwardVideoRef.current;
+    if (transitionType === "back") return backVideoRef.current;
+    return null;
+  }, [transitionType]);
+
   const handleTransition = (direction: "forward" | "back") => {
     if (isTransitioning || showProjects) return;
-
     if (direction === "forward" && currentYear >= MAX_YEAR) return;
     if (direction === "back" && currentYear <= MIN_YEAR) return;
 
-    const newTargetYear =
-      direction === "forward" ? currentYear + 1 : currentYear - 1;
+    const newTargetYear = direction === "forward" ? currentYear + 1 : currentYear - 1;
+    const video = direction === "forward" ? forwardVideoRef.current : backVideoRef.current;
+
+    if (!video) return;
 
     hasSwappedRef.current = false;
     setTargetYear(newTargetYear);
-    setIsTransitioning(true);
     setTransitionType(direction);
+    setIsTransitioning(true);
+    setVideoReady(true);
 
-    requestAnimationFrame(() => {
-      const v = videoRef.current;
-      if (!v) return;
+    video.currentTime = 0;
+    const playPromise = video.play();
 
-      v.currentTime = 0;
-      v.play().catch(() => {});
-    });
-
-    requestAnimationFrame(async () => {
-      const v = videoRef.current;
-      console.log(
-        "[transition] video exists?",
-        !!v,
-        "src:",
-        v?.currentSrc || v?.src,
-      );
-
-      if (!v) return;
-
-      try {
-        v.currentTime = 0;
-        v.load();
-        const p = v.play();
-        console.log("[transition] play() returned", p);
-        await p;
-        console.log(
-          "[transition] playing now. paused?",
-          v.paused,
-          "time:",
-          v.currentTime,
-        );
-      } catch (e) {
-        console.log("[transition] play failed:", e);
-      }
-    });
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        setCurrentYear(newTargetYear);
+        logVisit.mutate({
+          year: newTargetYear,
+          timestamp: new Date().toISOString(),
+        });
+        setIsTransitioning(false);
+        setTransitionType(null);
+        setTargetYear(null);
+        setVideoReady(false);
+      });
+    }
   };
 
-  useEffect(() => {
-    if (isTransitioning && videoRef.current && transitionType) {
-      videoRef.current.currentTime = 0;
-      const playPromise = videoRef.current.play();
-
-      if (playPromise !== undefined) {
-        playPromise.catch((error) => {
-          console.error("Video play failed:", error);
-          if (targetYear !== null) {
-            setCurrentYear(targetYear);
-            logVisit.mutate({
-              year: targetYear,
-              timestamp: new Date().toISOString(),
-            });
-          }
-          setIsTransitioning(false);
-          setTransitionType(null);
-          setTargetYear(null);
-        });
-      }
-    }
-  }, [isTransitioning, transitionType]);
-
-  const handleTimeUpdate = () => {
-    const video = videoRef.current;
-    if (
-      !video ||
-      hasSwappedRef.current ||
-      targetYear === null ||
-      !transitionType
-    )
-      return;
+  const handleTimeUpdate = useCallback(() => {
+    const video = getActiveVideo();
+    if (!video || hasSwappedRef.current || targetYear === null || !transitionType) return;
 
     const progress = video.currentTime / video.duration;
     const threshold = transitionType === "forward" ? 0.45 : 0.5;
@@ -125,9 +85,9 @@ export default function Home() {
         timestamp: new Date().toISOString(),
       });
     }
-  };
+  }, [getActiveVideo, targetYear, transitionType, logVisit]);
 
-  const handleVideoEnd = () => {
+  const handleVideoEnd = useCallback(() => {
     if (!hasSwappedRef.current && targetYear !== null) {
       setCurrentYear(targetYear);
       logVisit.mutate({
@@ -139,12 +99,12 @@ export default function Home() {
     setIsTransitioning(false);
     setTransitionType(null);
     setTargetYear(null);
+    setVideoReady(false);
     hasSwappedRef.current = false;
-  };
+  }, [targetYear, logVisit]);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-black select-none">
-      {/* Background Layer (z-0) - Always visible */}
       <div className="absolute inset-0 z-0">
         <img
           src={`/assets/idle_${currentYear}.png`}
@@ -152,22 +112,38 @@ export default function Home() {
           className="w-full h-full object-cover"
         />
       </div>
-      {/* Video Overlay Layer (z-10) - Alpha transparent overlay */}
-      {isTransitioning && transitionType && (
-        <div className="absolute inset-0 z-10">
-          <video
-            ref={videoRef}
-            className="w-full h-full object-cover"
-            src={getTransitionVideoPath(transitionType)}
-            onTimeUpdate={handleTimeUpdate}
-            onEnded={handleVideoEnd}
-            playsInline
-            muted
-            preload="auto"
-          />
-        </div>
-      )}
-      {/* Navigation Layer (z-20) - Always on top */}
+
+      <div
+        className={`absolute inset-0 z-10 transition-opacity duration-100 ${
+          isTransitioning && videoReady ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <video
+          ref={forwardVideoRef}
+          className={`absolute inset-0 w-full h-full object-cover ${
+            transitionType === "forward" ? "block" : "hidden"
+          }`}
+          src={getTransitionVideoPath("forward")}
+          onTimeUpdate={transitionType === "forward" ? handleTimeUpdate : undefined}
+          onEnded={transitionType === "forward" ? handleVideoEnd : undefined}
+          playsInline
+          muted
+          preload="auto"
+        />
+        <video
+          ref={backVideoRef}
+          className={`absolute inset-0 w-full h-full object-cover ${
+            transitionType === "back" ? "block" : "hidden"
+          }`}
+          src={getTransitionVideoPath("back")}
+          onTimeUpdate={transitionType === "back" ? handleTimeUpdate : undefined}
+          onEnded={transitionType === "back" ? handleVideoEnd : undefined}
+          playsInline
+          muted
+          preload="auto"
+        />
+      </div>
+
       <div className="absolute inset-0 z-20 flex items-center justify-between px-4 md:px-12 pointer-events-none">
         <div className="pointer-events-auto">
           <NavButton
@@ -187,7 +163,7 @@ export default function Home() {
           />
         </div>
       </div>
-      {/* Central CTA Button (z-[25]) */}
+
       <div className="absolute left-1/2 -translate-x-1/2 z-[25] bottom-32 md:bottom-36">
         <button
           onClick={() => !isTransitioning && setShowProjects(true)}
@@ -210,18 +186,18 @@ export default function Home() {
           VIEW PROJECTS
         </button>
       </div>
-      {/* Year Indicator (z-30) - Display only, no interactions */}
+
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
         <YearIndicator currentYear={currentYear} />
       </div>
-      {/* Year Projects Panel */}
+
       {showProjects && (
         <YearProjectsPanel
           year={currentYear}
           onClose={() => setShowProjects(false)}
         />
       )}
-      {/* Preloader - 첫 접속 시 에셋 로딩 */}
+
       {isLoading && <Preloader onComplete={() => setIsLoading(false)} />}
     </div>
   );
