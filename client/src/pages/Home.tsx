@@ -21,6 +21,7 @@ export default function Home() {
   const forwardVideoRef = useRef<HTMLVideoElement>(null);
   const backVideoRef = useRef<HTMLVideoElement>(null);
   const hasSwappedRef = useRef(false);
+  const finalDestinationRef = useRef<number | null>(null);
   const logVisit = useLogVisit();
 
   useEffect(() => {
@@ -36,15 +37,11 @@ export default function Home() {
     return null;
   }, [transitionType]);
 
-  const handleTransition = (direction: "forward" | "back") => {
-    if (isTransitioning || showProjects) return;
-    if (direction === "forward" && currentYear >= MAX_YEAR) return;
-    if (direction === "back" && currentYear <= MIN_YEAR) return;
-
-    const newTargetYear = direction === "forward" ? currentYear + 1 : currentYear - 1;
+  const startSingleTransition = useCallback((fromYear: number, direction: "forward" | "back") => {
+    const newTargetYear = direction === "forward" ? fromYear + 1 : fromYear - 1;
     const video = direction === "forward" ? forwardVideoRef.current : backVideoRef.current;
 
-    if (!video) return;
+    if (!video) return false;
 
     hasSwappedRef.current = false;
     setTargetYear(newTargetYear);
@@ -68,7 +65,29 @@ export default function Home() {
         setVideoReady(false);
       });
     }
+
+    return true;
+  }, [logVisit]);
+
+  const handleTransition = (direction: "forward" | "back") => {
+    if (isTransitioning || showProjects) return;
+    if (direction === "forward" && currentYear >= MAX_YEAR) return;
+    if (direction === "back" && currentYear <= MIN_YEAR) return;
+
+    const newTargetYear = direction === "forward" ? currentYear + 1 : currentYear - 1;
+    finalDestinationRef.current = newTargetYear;
+    startSingleTransition(currentYear, direction);
   };
+
+  const handleYearClick = useCallback((clickedYear: number) => {
+    if (isTransitioning || showProjects) return;
+    if (clickedYear === currentYear) return;
+    if (clickedYear < MIN_YEAR || clickedYear > MAX_YEAR) return;
+
+    finalDestinationRef.current = clickedYear;
+    const direction = clickedYear > currentYear ? "forward" : "back";
+    startSingleTransition(currentYear, direction);
+  }, [isTransitioning, showProjects, currentYear, startSingleTransition]);
 
   const handleTimeUpdate = useCallback(() => {
     const video = getActiveVideo();
@@ -88,6 +107,8 @@ export default function Home() {
   }, [getActiveVideo, targetYear, transitionType, logVisit]);
 
   const handleVideoEnd = useCallback(() => {
+    const nextYear = targetYear ?? currentYear;
+    
     if (!hasSwappedRef.current && targetYear !== null) {
       setCurrentYear(targetYear);
       logVisit.mutate({
@@ -101,7 +122,17 @@ export default function Home() {
     setTargetYear(null);
     setVideoReady(false);
     hasSwappedRef.current = false;
-  }, [targetYear, logVisit]);
+
+    const finalDest = finalDestinationRef.current;
+    if (finalDest !== null && finalDest !== nextYear) {
+      const direction = finalDest > nextYear ? "forward" : "back";
+      setTimeout(() => {
+        startSingleTransition(nextYear, direction);
+      }, 50);
+    } else {
+      finalDestinationRef.current = null;
+    }
+  }, [targetYear, currentYear, logVisit, startSingleTransition]);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-black select-none">
@@ -187,8 +218,12 @@ export default function Home() {
         </button>
       </div>
 
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-        <YearIndicator currentYear={currentYear} />
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+        <YearIndicator 
+          currentYear={currentYear} 
+          disabled={isTransitioning || showProjects}
+          onYearClick={handleYearClick}
+        />
       </div>
 
       {showProjects && (
