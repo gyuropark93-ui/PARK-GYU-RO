@@ -11,6 +11,10 @@ const MAX_YEAR = 2026;
 
 type TransitionMode = "step" | "jump";
 
+const STEP_THRESHOLD_FORWARD = 0.45;
+const STEP_THRESHOLD_BACK = 0.5;
+const JUMP_THRESHOLD = 0.6;
+
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeYear, setActiveYear] = useState(2026);
@@ -23,6 +27,7 @@ export default function Home() {
   const forwardVideoRef = useRef<HTMLVideoElement>(null);
   const backVideoRef = useRef<HTMLVideoElement>(null);
   const transitionModeRef = useRef<TransitionMode>("step");
+  const hasCommittedRef = useRef(false);
   const logVisit = useLogVisit();
 
   useEffect(() => {
@@ -38,6 +43,16 @@ export default function Home() {
     return null;
   }, [transitionType]);
 
+  const commitYearChange = useCallback((year: number) => {
+    if (hasCommittedRef.current) return;
+    hasCommittedRef.current = true;
+    setActiveYear(year);
+    logVisit.mutate({
+      year: year,
+      timestamp: new Date().toISOString(),
+    });
+  }, [logVisit]);
+
   const startTransition = useCallback((
     from: number,
     to: number,
@@ -52,6 +67,7 @@ export default function Home() {
 
     if (!video) return;
 
+    hasCommittedRef.current = false;
     transitionModeRef.current = mode;
     setPendingYear(to);
     setTransitionType(direction);
@@ -63,18 +79,14 @@ export default function Home() {
 
     if (playPromise !== undefined) {
       playPromise.catch(() => {
-        setActiveYear(to);
-        logVisit.mutate({
-          year: to,
-          timestamp: new Date().toISOString(),
-        });
+        commitYearChange(to);
         setIsTransitioning(false);
         setTransitionType(null);
         setPendingYear(null);
         setVideoReady(false);
       });
     }
-  }, [isTransitioning, showProjects, logVisit]);
+  }, [isTransitioning, showProjects, commitYearChange]);
 
   const handleTransition = (direction: "forward" | "back") => {
     if (isTransitioning || showProjects) return;
@@ -95,28 +107,25 @@ export default function Home() {
   const handleTimeUpdate = useCallback(() => {
     const video = getActiveVideo();
     if (!video || pendingYear === null || !transitionType) return;
+    if (hasCommittedRef.current) return;
 
+    const progress = video.currentTime / video.duration;
+    
+    let threshold: number;
     if (transitionModeRef.current === "step") {
-      const progress = video.currentTime / video.duration;
-      const threshold = transitionType === "forward" ? 0.45 : 0.5;
-
-      if (progress >= threshold && activeYear !== pendingYear) {
-        setActiveYear(pendingYear);
-        logVisit.mutate({
-          year: pendingYear,
-          timestamp: new Date().toISOString(),
-        });
-      }
+      threshold = transitionType === "forward" ? STEP_THRESHOLD_FORWARD : STEP_THRESHOLD_BACK;
+    } else {
+      threshold = JUMP_THRESHOLD;
     }
-  }, [getActiveVideo, pendingYear, transitionType, activeYear, logVisit]);
+
+    if (progress >= threshold) {
+      commitYearChange(pendingYear);
+    }
+  }, [getActiveVideo, pendingYear, transitionType, commitYearChange]);
 
   const handleVideoEnd = useCallback(() => {
-    if (pendingYear !== null && activeYear !== pendingYear) {
-      setActiveYear(pendingYear);
-      logVisit.mutate({
-        year: pendingYear,
-        timestamp: new Date().toISOString(),
-      });
+    if (pendingYear !== null && !hasCommittedRef.current) {
+      commitYearChange(pendingYear);
     }
 
     setIsTransitioning(false);
@@ -124,7 +133,7 @@ export default function Home() {
     setPendingYear(null);
     setVideoReady(false);
     transitionModeRef.current = "step";
-  }, [pendingYear, activeYear, logVisit]);
+  }, [pendingYear, commitYearChange]);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-black select-none">
