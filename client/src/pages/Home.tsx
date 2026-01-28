@@ -9,24 +9,25 @@ import { useLogVisit } from "@/hooks/use-visit";
 const MIN_YEAR = 2023;
 const MAX_YEAR = 2026;
 
+type TransitionMode = "step" | "jump";
+
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
-  const [currentYear, setCurrentYear] = useState(2026);
+  const [activeYear, setActiveYear] = useState(2026);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionType, setTransitionType] = useState<"forward" | "back" | null>(null);
-  const [targetYear, setTargetYear] = useState<number | null>(null);
+  const [pendingYear, setPendingYear] = useState<number | null>(null);
   const [showProjects, setShowProjects] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
 
   const forwardVideoRef = useRef<HTMLVideoElement>(null);
   const backVideoRef = useRef<HTMLVideoElement>(null);
-  const hasSwappedRef = useRef(false);
-  const finalDestinationRef = useRef<number | null>(null);
+  const transitionModeRef = useRef<TransitionMode>("step");
   const logVisit = useLogVisit();
 
   useEffect(() => {
     logVisit.mutate({
-      year: currentYear,
+      year: activeYear,
       timestamp: new Date().toISOString(),
     });
   }, []);
@@ -37,14 +38,22 @@ export default function Home() {
     return null;
   }, [transitionType]);
 
-  const startSingleTransition = useCallback((fromYear: number, direction: "forward" | "back") => {
-    const newTargetYear = direction === "forward" ? fromYear + 1 : fromYear - 1;
+  const startTransition = useCallback((
+    from: number,
+    to: number,
+    mode: TransitionMode
+  ) => {
+    if (isTransitioning || showProjects) return;
+    if (to < MIN_YEAR || to > MAX_YEAR) return;
+    if (to === from) return;
+
+    const direction = to > from ? "forward" : "back";
     const video = direction === "forward" ? forwardVideoRef.current : backVideoRef.current;
 
-    if (!video) return false;
+    if (!video) return;
 
-    hasSwappedRef.current = false;
-    setTargetYear(newTargetYear);
+    transitionModeRef.current = mode;
+    setPendingYear(to);
     setTransitionType(direction);
     setIsTransitioning(true);
     setVideoReady(true);
@@ -54,92 +63,75 @@ export default function Home() {
 
     if (playPromise !== undefined) {
       playPromise.catch(() => {
-        setCurrentYear(newTargetYear);
+        setActiveYear(to);
         logVisit.mutate({
-          year: newTargetYear,
+          year: to,
           timestamp: new Date().toISOString(),
         });
         setIsTransitioning(false);
         setTransitionType(null);
-        setTargetYear(null);
+        setPendingYear(null);
         setVideoReady(false);
       });
     }
-
-    return true;
-  }, [logVisit]);
+  }, [isTransitioning, showProjects, logVisit]);
 
   const handleTransition = (direction: "forward" | "back") => {
     if (isTransitioning || showProjects) return;
-    if (direction === "forward" && currentYear >= MAX_YEAR) return;
-    if (direction === "back" && currentYear <= MIN_YEAR) return;
+    if (direction === "forward" && activeYear >= MAX_YEAR) return;
+    if (direction === "back" && activeYear <= MIN_YEAR) return;
 
-    const newTargetYear = direction === "forward" ? currentYear + 1 : currentYear - 1;
-    finalDestinationRef.current = newTargetYear;
-    startSingleTransition(currentYear, direction);
+    const targetYear = direction === "forward" ? activeYear + 1 : activeYear - 1;
+    startTransition(activeYear, targetYear, "step");
   };
 
   const handleYearClick = useCallback((clickedYear: number) => {
     if (isTransitioning || showProjects) return;
-    if (clickedYear === currentYear) return;
-    if (clickedYear < MIN_YEAR || clickedYear > MAX_YEAR) return;
+    if (clickedYear === activeYear) return;
 
-    finalDestinationRef.current = clickedYear;
-    const direction = clickedYear > currentYear ? "forward" : "back";
-    startSingleTransition(currentYear, direction);
-  }, [isTransitioning, showProjects, currentYear, startSingleTransition]);
+    startTransition(activeYear, clickedYear, "jump");
+  }, [isTransitioning, showProjects, activeYear, startTransition]);
 
   const handleTimeUpdate = useCallback(() => {
     const video = getActiveVideo();
-    if (!video || hasSwappedRef.current || targetYear === null || !transitionType) return;
+    if (!video || pendingYear === null || !transitionType) return;
 
-    const progress = video.currentTime / video.duration;
-    const threshold = transitionType === "forward" ? 0.45 : 0.5;
+    if (transitionModeRef.current === "step") {
+      const progress = video.currentTime / video.duration;
+      const threshold = transitionType === "forward" ? 0.45 : 0.5;
 
-    if (progress >= threshold) {
-      hasSwappedRef.current = true;
-      setCurrentYear(targetYear);
-      logVisit.mutate({
-        year: targetYear,
-        timestamp: new Date().toISOString(),
-      });
+      if (progress >= threshold && activeYear !== pendingYear) {
+        setActiveYear(pendingYear);
+        logVisit.mutate({
+          year: pendingYear,
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
-  }, [getActiveVideo, targetYear, transitionType, logVisit]);
+  }, [getActiveVideo, pendingYear, transitionType, activeYear, logVisit]);
 
   const handleVideoEnd = useCallback(() => {
-    const nextYear = targetYear ?? currentYear;
-    
-    if (!hasSwappedRef.current && targetYear !== null) {
-      setCurrentYear(targetYear);
+    if (pendingYear !== null && activeYear !== pendingYear) {
+      setActiveYear(pendingYear);
       logVisit.mutate({
-        year: targetYear,
+        year: pendingYear,
         timestamp: new Date().toISOString(),
       });
     }
 
     setIsTransitioning(false);
     setTransitionType(null);
-    setTargetYear(null);
+    setPendingYear(null);
     setVideoReady(false);
-    hasSwappedRef.current = false;
-
-    const finalDest = finalDestinationRef.current;
-    if (finalDest !== null && finalDest !== nextYear) {
-      const direction = finalDest > nextYear ? "forward" : "back";
-      setTimeout(() => {
-        startSingleTransition(nextYear, direction);
-      }, 50);
-    } else {
-      finalDestinationRef.current = null;
-    }
-  }, [targetYear, currentYear, logVisit, startSingleTransition]);
+    transitionModeRef.current = "step";
+  }, [pendingYear, activeYear, logVisit]);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-black select-none">
       <div className="absolute inset-0 z-0">
         <img
-          src={`/assets/idle_${currentYear}.png`}
-          alt={`Subway platform ${currentYear}`}
+          src={`/assets/idle_${activeYear}.png`}
+          alt={`Subway platform ${activeYear}`}
           className="w-full h-full object-cover"
         />
       </div>
@@ -179,7 +171,7 @@ export default function Home() {
         <div className="pointer-events-auto">
           <NavButton
             direction="left"
-            visible={currentYear > MIN_YEAR}
+            visible={activeYear > MIN_YEAR}
             disabled={isTransitioning || showProjects}
             onClick={() => handleTransition("back")}
           />
@@ -188,7 +180,7 @@ export default function Home() {
         <div className="pointer-events-auto">
           <NavButton
             direction="right"
-            visible={currentYear < MAX_YEAR}
+            visible={activeYear < MAX_YEAR}
             disabled={isTransitioning || showProjects}
             onClick={() => handleTransition("forward")}
           />
@@ -220,7 +212,7 @@ export default function Home() {
 
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
         <YearIndicator 
-          currentYear={currentYear} 
+          currentYear={activeYear} 
           disabled={isTransitioning || showProjects}
           onYearClick={handleYearClick}
         />
@@ -228,7 +220,7 @@ export default function Home() {
 
       {showProjects && (
         <YearProjectsPanel
-          year={currentYear}
+          year={activeYear}
           onClose={() => setShowProjects(false)}
         />
       )}
