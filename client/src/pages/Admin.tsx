@@ -481,7 +481,25 @@ function BlockEditor({
     setUploading(true);
     try {
       const url = await uploadImage(file);
-      onUpdate({ ...block.data, url } as ImageBlockData);
+      const fileType = file.type;
+      const fileName = file.name.toLowerCase();
+      
+      let mediaType: 'image' | 'gif' | 'video' = 'image';
+      let videoOptions: ImageBlockData['videoOptions'] = undefined;
+      
+      if (fileType === 'video/mp4' || fileName.endsWith('.mp4')) {
+        mediaType = 'video';
+        videoOptions = { mode: 'autoplay', loop: true };
+      } else if (fileType === 'image/gif' || fileName.endsWith('.gif')) {
+        mediaType = 'gif';
+      }
+      
+      onUpdate({ 
+        ...block.data, 
+        url,
+        mediaType,
+        videoOptions,
+      } as ImageBlockData);
     } catch (err) {
       console.error("Upload failed:", err);
     } finally {
@@ -611,29 +629,81 @@ function BlockEditor({
           <div>
             {(block.data as ImageBlockData).url ? (
               <div className="relative">
-                <img
-                  src={(block.data as ImageBlockData).url}
-                  alt=""
-                  className="w-full h-auto rounded-lg"
-                />
+                {(block.data as ImageBlockData).mediaType === 'video' ? (
+                  <video
+                    src={(block.data as ImageBlockData).url}
+                    className="w-full h-auto rounded-lg"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                  />
+                ) : (
+                  <img
+                    src={(block.data as ImageBlockData).url}
+                    alt=""
+                    className="w-full h-auto rounded-lg"
+                  />
+                )}
                 {isSelected && (
-                  <label className="absolute top-2 right-2">
-                    <Button size="sm" variant="secondary" asChild>
-                      <span>
-                        {uploading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          "Replace"
-                        )}
-                      </span>
-                    </Button>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageUpload}
-                    />
-                  </label>
+                  <>
+                    <label className="absolute top-2 right-2">
+                      <Button size="sm" variant="secondary" asChild>
+                        <span>
+                          {uploading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            "Replace"
+                          )}
+                        </span>
+                      </Button>
+                      <input
+                        type="file"
+                        accept="image/*,image/gif,video/mp4"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                      />
+                    </label>
+                    {(block.data as ImageBlockData).mediaType === 'video' && (
+                      <div className="absolute bottom-2 left-2 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2">
+                        <span className="text-xs text-zinc-400">Mode:</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onUpdate({
+                              ...block.data,
+                              videoOptions: { mode: 'autoplay', loop: true },
+                            } as ImageBlockData);
+                          }}
+                          className={`px-2 py-1 text-xs rounded transition-colors ${
+                            (block.data as ImageBlockData).videoOptions?.mode === 'autoplay' || !(block.data as ImageBlockData).videoOptions?.mode
+                              ? 'bg-white/20 text-white'
+                              : 'text-zinc-400 hover:text-white'
+                          }`}
+                          data-testid="button-video-mode-autoplay"
+                        >
+                          Autoplay
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onUpdate({
+                              ...block.data,
+                              videoOptions: { mode: 'click', loop: false },
+                            } as ImageBlockData);
+                          }}
+                          className={`px-2 py-1 text-xs rounded transition-colors ${
+                            (block.data as ImageBlockData).videoOptions?.mode === 'click'
+                              ? 'bg-white/20 text-white'
+                              : 'text-zinc-400 hover:text-white'
+                          }`}
+                          data-testid="button-video-mode-click"
+                        >
+                          Click to Play
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             ) : (
@@ -644,13 +714,13 @@ function BlockEditor({
                   <>
                     <Image className="w-8 h-8 text-zinc-600 mb-2" />
                     <span className="text-sm text-zinc-500">
-                      Click to upload
+                      Image, GIF or MP4
                     </span>
                   </>
                 )}
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,image/gif,video/mp4"
                   className="hidden"
                   onChange={handleImageUpload}
                 />
