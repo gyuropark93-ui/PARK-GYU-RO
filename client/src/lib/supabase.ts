@@ -40,6 +40,11 @@ export interface ImageBlockData {
   fit?: 'cover' | 'contain';
   position?: 'center' | 'top' | 'bottom';
   layout?: BlockLayout;
+  mediaType?: 'image' | 'gif' | 'video';
+  videoOptions?: {
+    mode: 'autoplay' | 'click';
+    loop?: boolean;
+  };
 }
 
 export interface TextBlockData {

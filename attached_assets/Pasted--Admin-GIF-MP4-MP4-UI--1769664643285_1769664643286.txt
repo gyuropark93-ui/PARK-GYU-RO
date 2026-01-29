@@ -1,0 +1,62 @@
+목표: 관리자(Admin)에서 이미지 블록을 “GIF + MP4” 업로드/표시까지 지원하고, MP4는 업로드 후 재생 방식(자동재생/클릭재생)을 선택할 수 있게 한다. 기존 UI/스타일(다크, 글래스, 라운드, 미니멀) 유지. 다른 기능 영향 없이 최소 수정.
+
+요구사항
+1) 업로드 지원
+- 이미지 블록(Image block)에서 GIF + MP4 업로드 가능하게.
+- GIF는 기존 이미지처럼 <img>로 표시(루프 자동).
+- MP4는 업로드 후 <video>로 표시.
+
+2) MP4 재생 모드 선택(관리자에서 설정)
+- 이미지 블록에 “MP4 재생 방식” 옵션 추가:
+  A. Autoplay(자동재생)
+  B. Click-to-play(클릭해서 재생)
+- 이 옵션은 블록 데이터에 저장되어 프론트(YearProjectsPanel 등 실제 표시 화면)에서도 동일하게 동작해야 함.
+
+3) Autoplay 모드 동작
+- <video autoplay loop muted playsInline> 로 재생
+- controls(기본 비디오 컨트롤) 비활성화
+- 기존 이미지 블록과 동일한 레이아웃(가로 100%, 라운드, 동일 여백/프레임) 유지
+
+4) Click-to-play 모드 동작 + 커스텀 컨트롤 UI(사이트 컨셉에 맞게)
+- 기본 controls는 사용하지 말고 커스텀 컨트롤을 만든다.
+- 초기 상태: 영상 위에 “Play” 오버레이 버튼(글래스 느낌, 얇은 보더, 은은한 글로우/쉐도우, 둥근 버튼, lucide 아이콘 사용)
+- 클릭 시 재생 시작. 재생 중에는 오버레이가 자동으로 사라지고, 마우스 hover(또는 탭) 시만 컨트롤 바가 보이게.
+- 커스텀 컨트롤 구성(미니멀):
+  - Play/Pause 버튼
+  - 진행바(스크럽 가능)
+  - 음소거 토글(기본 muted 유지 가능)
+  - (선택) 전체화면 버튼
+- 컨트롤 디자인:
+  - 하단에 반투명 글래스 바(white/10 + blur, border white/20)
+  - 작은 아이콘 버튼, 라운드, hover 시 밝아짐
+  - 진행바는 얇고 심플, 현재 진행은 밝은 톤, 트랙은 어두운 톤
+  - 사이트의 다크/글래스/프리미엄 무드 유지 (index.css 유틸/톤에 맞추기)
+
+5) 구현 포인트(반드시 반영)
+- Admin.tsx:
+  - 이미지 업로드 input의 accept에 video/mp4 추가: accept="image/*,image/gif,video/mp4"
+  - MP4 업로드/표시 시 재생 방식 선택 UI(토글/라디오)를 이미지 블록 편집 영역에 추가
+- uploadImage(file):
+  - 기존 업로드 로직을 유지하되, video/mp4도 허용
+  - 파일 타입 검사/최적화가 있다면: MP4는 가공하지 말고 원본 그대로 업로드
+- Block 데이터 스키마:
+  - image block data 확장 (하위호환 유지):
+    - 기존 { url } 형태도 깨지지 않게 처리
+    - 추천 구조 예:
+      { url: string, mediaType?: "image"|"video", video?: { mode: "autoplay"|"click", loop?: boolean } }
+- 프론트 표시 컴포넌트(YearProjectsPanel 등):
+  - image block 렌더링을 확장:
+    - url이 .mp4 이거나 mediaType==="video"면 <video> 렌더
+    - mode에 따라 autoplay/loop/controls/커스텀 컨트롤 동작 분기
+  - 기존 이미지 렌더링/레이아웃 깨지지 않게
+
+6) 테스트 시나리오
+- GIF 업로드 → 관리자 미리보기 & 프론트에서 정상 애니메이션
+- MP4 업로드 + Autoplay 모드 → 자동재생/무한루프/컨트롤 없음
+- MP4 업로드 + Click 모드 → 플레이 오버레이, 커스텀 컨트롤로 재생/일시정지/스크럽 가능
+- 모바일(iOS 포함)에서 playsInline + muted로 동작 문제 없게
+
+산출물
+- 관련 파일들 코드 수정 완료
+- 기존 프로젝트 데이터/블록에 영향 없이 동작
+- 커스텀 비디오 컨트롤은 Tailwind 기반으로 구현(추가 라이브러리 최소화)
