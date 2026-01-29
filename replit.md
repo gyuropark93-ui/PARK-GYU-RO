@@ -76,7 +76,22 @@ shared/           # Shared code between client/server
 
 ## Recent Changes
 
-### January 27, 2026 (Latest)
+### January 29, 2026 (Latest)
+- **GIF and MP4 support in image blocks** - Extended media support
+  - Image blocks now accept GIF and MP4 files in addition to static images
+  - Auto-detection via file type and filename extension
+  - mediaType field tracks: 'image' | 'gif' | 'video'
+- **Video playback modes** - Two modes for uploaded MP4s
+  - Autoplay mode (default): Loop, muted, autoplay for ambient videos
+  - Click-to-play mode: Custom video player with glass-style controls
+  - Mode selector appears when editing video blocks in admin
+- **CustomVideoPlayer component** - Glass-style video controls
+  - Play/pause overlay with center button
+  - Bottom control bar with progress, mute, fullscreen
+  - Controls auto-hide after 2.5s during playback
+  - Click anywhere to play/pause, hover to show controls
+
+### January 27, 2026
 - **Safari transition video support** - Browser-specific video formats
   - Safari (desktop/iOS): MP4 files with HEVC/H.265 codec
   - Chrome/Edge/Firefox: WebM VP9 with alpha channel
