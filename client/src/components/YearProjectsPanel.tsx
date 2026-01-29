@@ -15,6 +15,7 @@ import type {
 import { toEmbedUrl, getAspectRatioClass } from "@/lib/videoEmbed";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { getSharedExtensions } from "@/lib/tiptapExtensions";
+import { CustomVideoPlayer, AutoplayVideo } from "./CustomVideoPlayer";
 
 interface YearProjectsPanelProps {
   year: number;
@@ -23,6 +24,17 @@ interface YearProjectsPanelProps {
 
 function ImageBlock({ data }: { data: ImageBlockData }) {
   const [loaded, setLoaded] = useState(false);
+  
+  const isVideo = data.mediaType === 'video' || data.url?.toLowerCase().endsWith('.mp4');
+  const isClickToPlay = isVideo && data.videoOptions?.mode === 'click';
+  
+  if (isVideo) {
+    if (isClickToPlay) {
+      return <CustomVideoPlayer src={data.url} className="w-full" />;
+    }
+    return <AutoplayVideo src={data.url} className="w-full" />;
+  }
+  
   return (
     <div className="w-full relative">
       {!loaded && (
