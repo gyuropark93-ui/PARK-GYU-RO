@@ -27,12 +27,13 @@ function ImageBlock({ data }: { data: ImageBlockData }) {
   
   const isVideo = data.mediaType === 'video' || data.url?.toLowerCase().endsWith('.mp4');
   const isClickToPlay = isVideo && data.videoOptions?.mode === 'click';
+  const shouldLoop = data.videoOptions?.loop !== false;
   
   if (isVideo) {
     if (isClickToPlay) {
       return <CustomVideoPlayer src={data.url} className="w-full" />;
     }
-    return <AutoplayVideo src={data.url} className="w-full" />;
+    return <AutoplayVideo src={data.url} className="w-full" loop={shouldLoop} />;
   }
   
   return (

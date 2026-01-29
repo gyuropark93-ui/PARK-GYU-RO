@@ -627,105 +627,120 @@ function BlockEditor({
       <div className="p-4">
         {block.type === "image" && (
           <div>
-            {(block.data as ImageBlockData).url ? (
-              <div className="relative">
-                {(block.data as ImageBlockData).mediaType === 'video' ? (
-                  <video
-                    src={(block.data as ImageBlockData).url}
-                    className="w-full h-auto rounded-lg"
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                  />
-                ) : (
-                  <img
-                    src={(block.data as ImageBlockData).url}
-                    alt=""
-                    className="w-full h-auto rounded-lg"
-                  />
-                )}
-                {isSelected && (
-                  <>
-                    <label className="absolute top-2 right-2">
-                      <Button size="sm" variant="secondary" asChild>
-                        <span>
-                          {uploading ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            "Replace"
-                          )}
+            {(() => {
+              const imgData = block.data as ImageBlockData;
+              const isVideo = imgData.mediaType === 'video' || imgData.url?.toLowerCase().endsWith('.mp4');
+              const currentMode = imgData.videoOptions?.mode || 'autoplay';
+              
+              if (!imgData.url) {
+                return (
+                  <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-zinc-700 rounded-lg cursor-pointer hover:border-zinc-600 transition-colors">
+                    {uploading ? (
+                      <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+                    ) : (
+                      <>
+                        <Image className="w-8 h-8 text-zinc-600 mb-2" />
+                        <span className="text-sm text-zinc-500">
+                          Image, GIF or MP4
                         </span>
-                      </Button>
-                      <input
-                        type="file"
-                        accept="image/*,image/gif,video/mp4"
-                        className="hidden"
-                        onChange={handleImageUpload}
-                      />
-                    </label>
-                    {(block.data as ImageBlockData).mediaType === 'video' && (
-                      <div className="absolute bottom-2 left-2 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2">
-                        <span className="text-xs text-zinc-400">Mode:</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onUpdate({
-                              ...block.data,
-                              videoOptions: { mode: 'autoplay', loop: true },
-                            } as ImageBlockData);
-                          }}
-                          className={`px-2 py-1 text-xs rounded transition-colors ${
-                            (block.data as ImageBlockData).videoOptions?.mode === 'autoplay' || !(block.data as ImageBlockData).videoOptions?.mode
-                              ? 'bg-white/20 text-white'
-                              : 'text-zinc-400 hover:text-white'
-                          }`}
-                          data-testid="button-video-mode-autoplay"
-                        >
-                          Autoplay
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onUpdate({
-                              ...block.data,
-                              videoOptions: { mode: 'click', loop: false },
-                            } as ImageBlockData);
-                          }}
-                          className={`px-2 py-1 text-xs rounded transition-colors ${
-                            (block.data as ImageBlockData).videoOptions?.mode === 'click'
-                              ? 'bg-white/20 text-white'
-                              : 'text-zinc-400 hover:text-white'
-                          }`}
-                          data-testid="button-video-mode-click"
-                        >
-                          Click to Play
-                        </button>
-                      </div>
+                      </>
                     )}
-                  </>
-                )}
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-zinc-700 rounded-lg cursor-pointer hover:border-zinc-600 transition-colors">
-                {uploading ? (
-                  <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
-                ) : (
-                  <>
-                    <Image className="w-8 h-8 text-zinc-600 mb-2" />
-                    <span className="text-sm text-zinc-500">
-                      Image, GIF or MP4
-                    </span>
-                  </>
-                )}
-                <input
-                  type="file"
-                  accept="image/*,image/gif,video/mp4"
-                  className="hidden"
-                  onChange={handleImageUpload}
-                />
-              </label>
-            )}
+                    <input
+                      type="file"
+                      accept="image/*,image/gif,video/mp4"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                  </label>
+                );
+              }
+              
+              return (
+                <div className="relative">
+                  {isVideo ? (
+                    <video
+                      src={imgData.url}
+                      className="w-full h-auto rounded-lg"
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={imgData.url}
+                      alt=""
+                      className="w-full h-auto rounded-lg"
+                    />
+                  )}
+                  {isSelected && (
+                    <>
+                      <label className="absolute top-2 right-2">
+                        <Button size="sm" variant="secondary" asChild disabled={uploading}>
+                          <span>
+                            {uploading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              "Replace"
+                            )}
+                          </span>
+                        </Button>
+                        <input
+                          type="file"
+                          accept="image/*,image/gif,video/mp4"
+                          className="hidden"
+                          onChange={handleImageUpload}
+                          disabled={uploading}
+                        />
+                      </label>
+                      {isVideo && (
+                        <div className="absolute bottom-2 left-2 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2">
+                          <span className="text-xs text-zinc-400">Mode:</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdate({
+                                ...block.data,
+                                mediaType: 'video',
+                                videoOptions: { mode: 'autoplay', loop: true },
+                              } as ImageBlockData);
+                            }}
+                            disabled={uploading}
+                            className={`px-2 py-1 text-xs rounded transition-colors ${
+                              currentMode === 'autoplay'
+                                ? 'bg-white/20 text-white'
+                                : 'text-zinc-400 hover:text-white'
+                            }`}
+                            data-testid="button-video-mode-autoplay"
+                          >
+                            Autoplay
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdate({
+                                ...block.data,
+                                mediaType: 'video',
+                                videoOptions: { mode: 'click', loop: false },
+                              } as ImageBlockData);
+                            }}
+                            disabled={uploading}
+                            className={`px-2 py-1 text-xs rounded transition-colors ${
+                              currentMode === 'click'
+                                ? 'bg-white/20 text-white'
+                                : 'text-zinc-400 hover:text-white'
+                            }`}
+                            data-testid="button-video-mode-click"
+                          >
+                            Click to Play
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 

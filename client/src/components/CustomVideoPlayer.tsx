@@ -226,13 +226,13 @@ export function CustomVideoPlayer({ src, className = "" }: CustomVideoPlayerProp
   );
 }
 
-export function AutoplayVideo({ src, className = "" }: { src: string; className?: string }) {
+export function AutoplayVideo({ src, className = "", loop = true }: { src: string; className?: string; loop?: boolean }) {
   return (
     <video
       src={src}
       className={`w-full h-auto rounded-lg ${className}`}
       autoPlay
-      loop
+      loop={loop}
       muted
       playsInline
     />
