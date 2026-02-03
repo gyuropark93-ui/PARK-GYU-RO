@@ -7,6 +7,7 @@ import {
   useCreateProject,
   useUpdateProject,
   useDeleteProject,
+  useReorderProjects,
   useProjectBlocks,
   useCreateBlock,
   useUpdateBlock,
@@ -66,6 +67,11 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+  useDroppable,
+  DragOverlay,
+  rectIntersection,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -73,6 +79,7 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
+  rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -139,27 +146,148 @@ function LoginForm({
   );
 }
 
+function SortableProjectCard({
+  project,
+  onEdit,
+  onDelete,
+  isDeleting,
+}: {
+  project: Project;
+  onEdit: () => void;
+  onDelete: () => void;
+  isDeleting: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: project.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden hover:border-zinc-700 transition-colors"
+    >
+      <div className="aspect-video relative overflow-hidden bg-zinc-800">
+        {project.cover_url ? (
+          <img
+            src={project.cover_url}
+            alt={project.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-zinc-600">
+            <Image className="w-8 h-8" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+          <div
+            {...attributes}
+            {...listeners}
+            className="absolute top-2 left-2 cursor-grab active:cursor-grabbing p-2 rounded bg-zinc-800/80 hover:bg-zinc-700 transition-colors"
+            data-testid={`drag-handle-project-${project.id}`}
+          >
+            <GripVertical className="w-4 h-4 text-zinc-300" />
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={onEdit}
+            data-testid={`button-edit-${project.id}`}
+          >
+            <Pencil className="w-4 h-4 mr-1" />
+            Edit
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={onDelete}
+            disabled={isDeleting}
+            data-testid={`button-delete-${project.id}`}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+      <div className="p-4">
+        <h3 className="font-medium text-white truncate">{project.title}</h3>
+        <p className="text-sm text-zinc-500">{project.year}</p>
+      </div>
+    </div>
+  );
+}
+
+function DroppableYearGroup({
+  year,
+  children,
+  isOver,
+}: {
+  year: number;
+  children: React.ReactNode;
+  isOver: boolean;
+}) {
+  const { setNodeRef } = useDroppable({ id: `year-${year}` });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`mb-10 p-4 -mx-4 rounded-xl transition-colors ${isOver ? "bg-blue-500/10 ring-2 ring-blue-500/50" : ""}`}
+    >
+      <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+        <span className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-sm">
+          {year}
+        </span>
+        {year}
+      </h2>
+      {children}
+    </div>
+  );
+}
+
 function ProjectList() {
   const [, navigate] = useLocation();
   const { data: projects, isLoading } = useProjects();
   const deleteProject = useDeleteProject();
   const createProject = useCreateProject();
+  const reorderProjects = useReorderProjects();
   const { signOut, user } = useAuth();
+  
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overYearId, setOverYearId] = useState<string | null>(null);
+  const [localProjects, setLocalProjects] = useState<Project[]>([]);
+  
+  useEffect(() => {
+    if (projects) {
+      setLocalProjects(projects);
+    }
+  }, [projects]);
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
-  const projectsByYear =
-    projects?.reduce(
-      (acc, project) => {
-        const year = project.year;
-        if (!acc[year]) acc[year] = [];
-        acc[year].push(project);
-        return acc;
-      },
-      {} as Record<number, Project[]>,
-    ) || {};
-
-  const years = Object.keys(projectsByYear)
-    .map(Number)
-    .sort((a, b) => b - a);
+  const allYears = [2026, 2025, 2024, 2023];
+  
+  const projectsByYear = localProjects.reduce(
+    (acc, project) => {
+      const year = project.year;
+      if (!acc[year]) acc[year] = [];
+      acc[year].push(project);
+      return acc;
+    },
+    {} as Record<number, Project[]>
+  );
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this project and all its content?")) return;
@@ -178,6 +306,128 @@ function ProjectList() {
       console.error("Failed to create project:", err);
     }
   };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event;
+    if (!over) {
+      setOverYearId(null);
+      return;
+    }
+    
+    const overId = over.id as string;
+    if (overId.startsWith("year-")) {
+      setOverYearId(overId);
+    } else {
+      const overProject = localProjects.find((p) => p.id === overId);
+      if (overProject) {
+        setOverYearId(`year-${overProject.year}`);
+      }
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    setOverYearId(null);
+
+    if (!over) return;
+
+    const activeProject = localProjects.find((p) => p.id === active.id);
+    if (!activeProject) return;
+
+    let targetYear: number;
+    let targetIndex: number;
+    
+    const overId = over.id as string;
+    
+    if (overId.startsWith("year-")) {
+      targetYear = parseInt(overId.replace("year-", ""));
+      const yearProjects = projectsByYear[targetYear] || [];
+      targetIndex = yearProjects.length;
+    } else {
+      const overProject = localProjects.find((p) => p.id === overId);
+      if (!overProject) return;
+      
+      targetYear = overProject.year;
+      const yearProjects = projectsByYear[targetYear] || [];
+      targetIndex = yearProjects.findIndex((p) => p.id === overId);
+    }
+
+    if (activeProject.year === targetYear) {
+      const yearProjects = [...(projectsByYear[targetYear] || [])];
+      const oldIndex = yearProjects.findIndex((p) => p.id === active.id);
+      
+      if (oldIndex === targetIndex) return;
+      
+      const reordered = arrayMove(yearProjects, oldIndex, targetIndex);
+      
+      const updatedProjects = localProjects.map((p) => {
+        if (p.year !== targetYear) return p;
+        const newIndex = reordered.findIndex((rp) => rp.id === p.id);
+        return { ...p, sort_order: newIndex };
+      });
+      
+      setLocalProjects(updatedProjects);
+      
+      const updates = reordered.map((p, i) => ({
+        id: p.id,
+        year: targetYear,
+        sort_order: i,
+      }));
+      
+      await reorderProjects.mutateAsync(updates);
+    } else {
+      const sourceYearProjects = (projectsByYear[activeProject.year] || []).filter(
+        (p) => p.id !== active.id
+      );
+      const targetYearProjects = [...(projectsByYear[targetYear] || [])];
+      
+      targetYearProjects.splice(targetIndex, 0, {
+        ...activeProject,
+        year: targetYear,
+      });
+      
+      const updatedProjects = localProjects.map((p) => {
+        if (p.id === active.id) {
+          return { ...p, year: targetYear, sort_order: targetIndex };
+        }
+        if (p.year === activeProject.year && p.id !== active.id) {
+          const idx = sourceYearProjects.findIndex((sp) => sp.id === p.id);
+          return { ...p, sort_order: idx };
+        }
+        if (p.year === targetYear && p.id !== active.id) {
+          const idx = targetYearProjects.findIndex((tp) => tp.id === p.id);
+          return { ...p, sort_order: idx };
+        }
+        return p;
+      });
+      
+      setLocalProjects(updatedProjects);
+      
+      const updates = [
+        ...sourceYearProjects.map((p, i) => ({
+          id: p.id,
+          year: activeProject.year,
+          sort_order: i,
+        })),
+        ...targetYearProjects.map((p, i) => ({
+          id: p.id,
+          year: targetYear,
+          sort_order: i,
+        })),
+      ];
+      
+      await reorderProjects.mutateAsync(updates);
+    }
+  };
+
+  const activeProject = activeId
+    ? localProjects.find((p) => p.id === activeId)
+    : null;
 
   return (
     <div className="h-[100dvh] flex flex-col bg-zinc-950">
@@ -233,7 +483,7 @@ function ProjectList() {
             </div>
           )}
 
-          {!isLoading && years.length === 0 && (
+          {!isLoading && localProjects.length === 0 && (
             <div className="text-center py-20">
               <p className="text-zinc-500 mb-4">No projects yet</p>
               <Button
@@ -245,25 +495,57 @@ function ProjectList() {
             </div>
           )}
 
-          {years.map((year) => (
-            <div key={year} className="mb-10">
-              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-sm">
-                  {year}
-                </span>
-                {year}
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {projectsByYear[year].map((project) => (
-                  <div
-                    key={project.id}
-                    className="group bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden hover:border-zinc-700 transition-colors"
+          {!isLoading && localProjects.length > 0 && (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={rectIntersection}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+            >
+              {allYears.map((year) => {
+                const yearProjects = projectsByYear[year] || [];
+                const isOverThisYear = overYearId === `year-${year}`;
+                
+                return (
+                  <DroppableYearGroup
+                    key={year}
+                    year={year}
+                    isOver={isOverThisYear && activeId !== null}
                   >
+                    <SortableContext
+                      items={yearProjects.map((p) => p.id)}
+                      strategy={rectSortingStrategy}
+                    >
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 min-h-[100px]">
+                        {yearProjects.length === 0 && (
+                          <div className="col-span-full flex items-center justify-center h-24 border-2 border-dashed border-zinc-700 rounded-lg text-zinc-500 text-sm">
+                            Drop projects here
+                          </div>
+                        )}
+                        {yearProjects.map((project) => (
+                          <SortableProjectCard
+                            key={project.id}
+                            project={project}
+                            onEdit={() => navigate(`/admin/projects/${project.id}`)}
+                            onDelete={() => handleDelete(project.id)}
+                            isDeleting={deleteProject.isPending}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DroppableYearGroup>
+                );
+              })}
+              
+              <DragOverlay>
+                {activeProject && (
+                  <div className="bg-zinc-900 rounded-xl border-2 border-blue-500 overflow-hidden shadow-2xl opacity-90 w-64">
                     <div className="aspect-video relative overflow-hidden bg-zinc-800">
-                      {project.cover_url ? (
+                      {activeProject.cover_url ? (
                         <img
-                          src={project.cover_url}
-                          alt={project.title}
+                          src={activeProject.cover_url}
+                          alt={activeProject.title}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -271,40 +553,18 @@ function ProjectList() {
                           <Image className="w-8 h-8" />
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() =>
-                            navigate(`/admin/projects/${project.id}`)
-                          }
-                          data-testid={`button-edit-${project.id}`}
-                        >
-                          <Pencil className="w-4 h-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDelete(project.id)}
-                          disabled={deleteProject.isPending}
-                          data-testid={`button-delete-${project.id}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
                     </div>
                     <div className="p-4">
                       <h3 className="font-medium text-white truncate">
-                        {project.title}
+                        {activeProject.title}
                       </h3>
-                      <p className="text-sm text-zinc-500">{project.year}</p>
+                      <p className="text-sm text-zinc-500">{activeProject.year}</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          ))}
+                )}
+              </DragOverlay>
+            </DndContext>
+          )}
         </div>
       </main>
     </div>
