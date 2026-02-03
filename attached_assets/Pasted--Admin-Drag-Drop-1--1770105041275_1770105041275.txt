@@ -1,0 +1,59 @@
+상황 요약 (문제)
+- Admin에서 Drag & Drop(연도 이동/정렬) 기능을 추가한 뒤부터 문제가 발생했다.
+1) 기존에 업로드했던 프로젝트가 “다 삭제된 것처럼” 보였는데, DB(Supabase)에는 레코드가 남아있다.
+   - projects 테이블을 확인해보니 기존 데이터의 status가 전부 'draft'로 되어 있다.
+2) 현재는 관리자 페이지에서 “New Project”로 새 프로젝트를 만들어도 생성이 되지 않는다.
+   - 즉, Admin에서 INSERT(생성) 기능이 막힌 상태다.
+- 목표는: 기존 데이터는 그대로 유지하면서, Admin에서 생성/편집/정렬/연도이동이 정상 동작하고,
+  Public(프론트) 페이지에서도 year + sort_order 기준으로 정상 표시되게 하는 것이다.
+
+Replit이 해야 할 일 (요구사항)
+1) “생성 안 됨” 원인 자동 진단
+- 브라우저 DevTools(Network) 또는 서버 로그에서 create 요청의 실제 에러 메시지를 확인해 원인을 특정해라.
+- 특히 아래 원인을 우선순위로 점검:
+  A) Supabase RLS 정책 때문에 INSERT/PATCH가 막힘(401/403)
+  B) 새로 추가된 컬럼(year, sort_order/sortOrder 등) NOT NULL/필수값 누락으로 INSERT 실패(400 + constraint 에러)
+  C) API route/클라이언트 요청 바디 불일치(500/422)
+  D) 생성은 됐는데 Admin 리스트가 필터 때문에 안 보여서 “생성 안 된 것처럼” 보임
+
+2) Admin과 Public의 조회/필터 규칙 정리 (중요)
+- Admin: draft 포함 “모든 프로젝트”가 보여야 한다. (status 필터로 숨기지 말 것)
+- Public: published만 보여도 된다(원한다면), 하지만 지금은 최소한 의도한 규칙을 명확히 분리해라.
+- 기존 데이터가 전부 draft인 상태이므로, Admin에서 draft도 반드시 렌더링되게 수정해야 한다.
+
+3) DB 스키마/기본값/백필(backfill) 안전 처리
+- 데이터 삭제/테이블 리셋 절대 금지.
+- year, sort_order 컬럼이 있는 상태에서:
+  Gravel:
+  - year가 NULL인 레코드는 created_at의 연도로 백필(없으면 현재연도)
+  - sort_order가 NULL인 레코드는 같은 year 그룹 내에서 created_at 기준으로 0,10,20… 형태로 백필
+- 앞으로 새로 생성되는 프로젝트는 기본값이 자동으로 들어가게 보장:
+  - status 기본값 'draft'
+  - year 기본값: 생성 시점의 현재 연도
+  - sort_order 기본값: 해당 연도에서 max(sort_order)+10
+
+4) RLS 정책 점검/수정 (Supabase)
+- RLS가 켜져 있다면 Admin 로그인 유저가 projects에 대해 INSERT/UPDATE를 할 수 있도록 정책을 추가/수정해라.
+- 최소 요구:
+  - authenticated(또는 admin role) 유저는 projects에 INSERT/UPDATE 가능
+- 정책/스키마 변경은 SQL로 명확히 제공하고, 변경 후 실제 생성이 되는지 검증해라.
+
+5) API/클라이언트 코드 수정
+- Create Project 시 서버(또는 supabase client)가 year/sort_order/status를 누락 없이 처리하도록 수정:
+  - year: new Date().getFullYear()
+  - sort_order: 해당 year의 max(sort_order)+10
+  - status: 'draft'
+- 생성 성공 후 Admin 리스트를 즉시 refetch/refresh하여 새 카드가 보이게 해라.
+- 실패 시: 에러를 콘솔에만 숨기지 말고 UI toast로 에러 메시지를 보여라.
+
+6) 정렬/드래그앤드롭 저장 로직 유지
+- DnD로 순서 바꾼 결과를 DB에 bulk update로 저장하는 로직은 유지하되,
+  save 실패 시 롤백/복구가 확실히 되게 하고,
+  year DESC, sort_order ASC 정렬이 Admin/Public 모두 동일하게 적용되게 해라.
+
+검증 체크리스트 (작업 완료 기준)
+- Admin에서 New Project 생성이 성공한다 (DB에 row 추가됨).
+- Admin 목록에서 draft 프로젝트도 보인다 (기존 데이터가 다시 표시됨).
+- DnD로 같은 연도 내 정렬 / 연도 간 이동 후 새로고침해도 순서가 유지된다.
+- Public 페이지가 year DESC, sort_order ASC 정렬을 따르며 (필요시 published만) 정상 표시된다.
+- 어떤 단계에서든 기존 데이터가 삭제되지 않는다.

@@ -20,6 +20,7 @@ export interface Project {
   created_at: string;
   updated_at?: string;
   sort_order?: number;
+  status?: 'draft' | 'published';
 }
 
 export type ProjectInsert = Omit<Project, 'id' | 'created_at' | 'updated_at'>;

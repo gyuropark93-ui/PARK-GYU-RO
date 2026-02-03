@@ -66,10 +66,30 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (project: ProjectInsert) => {
+    mutationFn: async (project: Partial<ProjectInsert>) => {
+      const year = project.year ?? new Date().getFullYear();
+      
+      const { data: existingProjects } = await supabase
+        .from("projects")
+        .select("sort_order")
+        .eq("year", year)
+        .order("sort_order", { ascending: false, nullsFirst: false })
+        .limit(1);
+      
+      const maxSortOrder = existingProjects?.[0]?.sort_order ?? -10;
+      const nextSortOrder = (maxSortOrder ?? 0) + 10;
+      
+      const insertData = {
+        title: project.title ?? "Untitled",
+        year,
+        cover_url: project.cover_url ?? null,
+        sort_order: project.sort_order ?? nextSortOrder,
+        status: project.status ?? "draft",
+      };
+      
       const { data, error } = await supabase
         .from("projects")
-        .insert(project)
+        .insert(insertData)
         .select()
         .single();
 

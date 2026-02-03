@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useRoute } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import {
   useProjects,
   useProject,
@@ -261,6 +262,7 @@ function ProjectList() {
   const createProject = useCreateProject();
   const reorderProjects = useReorderProjects();
   const { signOut, user } = useAuth();
+  const { toast } = useToast();
   
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overYearId, setOverYearId] = useState<string | null>(null);
@@ -309,14 +311,21 @@ function ProjectList() {
 
   const handleNewProject = async () => {
     try {
+      const currentYear = new Date().getFullYear();
       const newProject = await createProject.mutateAsync({
         title: "Untitled",
-        year: 2026,
+        year: currentYear,
         cover_url: null,
       });
       navigate(`/admin/projects/${newProject.id}`);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to create project:", err);
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      toast({
+        title: "Failed to create project",
+        description: errorMessage,
+        variant: "destructive",
+      });
     }
   };
 
@@ -440,9 +449,15 @@ function ProjectList() {
         
         await reorderProjects.mutateAsync(updates);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to reorder projects:", err);
       setLocalProjects(previousProjects);
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      toast({
+        title: "Failed to reorder projects",
+        description: errorMessage,
+        variant: "destructive",
+      });
     }
   };
 
