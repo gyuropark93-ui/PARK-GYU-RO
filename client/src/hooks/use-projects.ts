@@ -73,11 +73,12 @@ export function useCreateProject() {
         .from("projects")
         .select("sort_order")
         .eq("year", year)
-        .order("sort_order", { ascending: false, nullsFirst: false })
+        .not("sort_order", "is", null)
+        .order("sort_order", { ascending: false })
         .limit(1);
       
-      const maxSortOrder = existingProjects?.[0]?.sort_order ?? -10;
-      const nextSortOrder = (maxSortOrder ?? 0) + 10;
+      const maxSortOrder = existingProjects?.[0]?.sort_order;
+      const nextSortOrder = typeof maxSortOrder === "number" ? maxSortOrder + 10 : 0;
       
       const insertData = {
         title: project.title ?? "Untitled",

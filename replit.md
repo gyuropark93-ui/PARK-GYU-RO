@@ -62,7 +62,7 @@ shared/           # Shared code between client/server
 ### Database
 - **PostgreSQL**: Primary database, connection via `DATABASE_URL` environment variable
 - **Supabase**: Used for project data with two tables:
-  - `projects`: id (uuid), year (int), title (text), cover_url (text), created_at (timestamp)
+  - `projects`: id (uuid), year (int), title (text), cover_url (text), sort_order (int), status (text: draft|published), created_at (timestamp)
   - `project_blocks`: id (uuid), project_id (uuid FK), sort_order (int), type (text: image|text|video|grid), data (jsonb), created_at (timestamp)
 
 ### Authentication & Storage
@@ -85,6 +85,12 @@ shared/           # Shared code between client/server
   - Optimistic UI updates with error rollback
   - Empty year groups show "Drop projects here" placeholder
   - Drag handles appear on hover for desktop
+- **Project creation fixes** - Improved default values and error handling
+  - New projects use current year dynamically instead of hardcoded 2026
+  - sort_order auto-calculated as max(sort_order) + 10 for the year
+  - status field added to Project type ('draft' | 'published')
+  - Toast notifications for create/reorder failures
+  - Projects sorted by sort_order before computing drag indices
 
 ### January 29, 2026
 - **GIF and MP4 support in image blocks** - Extended media support
