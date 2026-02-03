@@ -783,7 +783,7 @@ function BlockEditor({
       let mediaType: 'image' | 'gif' | 'video' = 'image';
       let videoOptions: ImageBlockData['videoOptions'] = undefined;
       
-      if (fileType === 'video/mp4' || fileName.endsWith('.mp4')) {
+      if (fileType === 'video/mp4' || fileType === 'video/webm' || fileName.endsWith('.mp4') || fileName.endsWith('.webm')) {
         mediaType = 'video';
         videoOptions = { mode: 'autoplay', loop: true };
       } else if (fileType === 'image/gif' || fileName.endsWith('.gif')) {
@@ -937,13 +937,13 @@ function BlockEditor({
                       <>
                         <Image className="w-8 h-8 text-zinc-600 mb-2" />
                         <span className="text-sm text-zinc-500">
-                          Image, GIF or MP4
+                          Image, GIF, MP4 or WebM
                         </span>
                       </>
                     )}
                     <input
                       type="file"
-                      accept="image/*,image/gif,video/mp4"
+                      accept="image/*,image/gif,video/mp4,video/webm"
                       className="hidden"
                       onChange={handleImageUpload}
                     />
@@ -983,7 +983,7 @@ function BlockEditor({
                         </Button>
                         <input
                           type="file"
-                          accept="image/*,image/gif,video/mp4"
+                          accept="image/*,image/gif,video/mp4,video/webm"
                           className="hidden"
                           onChange={handleImageUpload}
                           disabled={uploading}
