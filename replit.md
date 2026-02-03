@@ -76,7 +76,17 @@ shared/           # Shared code between client/server
 
 ## Recent Changes
 
-### January 29, 2026 (Latest)
+### February 3, 2026 (Latest)
+- **Drag-and-drop project reordering** - Enhanced admin project management
+  - Projects can be reordered within a year by dragging
+  - Projects can be moved between years (2023-2026) via drag-and-drop
+  - Uses dnd-kit library with 8px activation distance
+  - sort_order field added to Project type for persistent ordering
+  - Optimistic UI updates with error rollback
+  - Empty year groups show "Drop projects here" placeholder
+  - Drag handles appear on hover for desktop
+
+### January 29, 2026
 - **GIF and MP4 support in image blocks** - Extended media support
   - Image blocks now accept GIF and MP4 files in addition to static images
   - Auto-detection via file type and filename extension
