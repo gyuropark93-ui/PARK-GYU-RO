@@ -279,6 +279,15 @@ function ProjectList() {
 
   const allYears = [2026, 2025, 2024, 2023];
   
+  const sortProjects = (projects: Project[]) => {
+    return [...projects].sort((a, b) => {
+      const orderA = a.sort_order ?? Infinity;
+      const orderB = b.sort_order ?? Infinity;
+      if (orderA !== orderB) return orderA - orderB;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  };
+  
   const projectsByYear = localProjects.reduce(
     (acc, project) => {
       const year = project.year;
@@ -288,6 +297,10 @@ function ProjectList() {
     },
     {} as Record<number, Project[]>
   );
+  
+  Object.keys(projectsByYear).forEach((year) => {
+    projectsByYear[Number(year)] = sortProjects(projectsByYear[Number(year)]);
+  });
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this project and all its content?")) return;
@@ -357,71 +370,79 @@ function ProjectList() {
       targetIndex = yearProjects.findIndex((p) => p.id === overId);
     }
 
-    if (activeProject.year === targetYear) {
-      const yearProjects = [...(projectsByYear[targetYear] || [])];
-      const oldIndex = yearProjects.findIndex((p) => p.id === active.id);
-      
-      if (oldIndex === targetIndex) return;
-      
-      const reordered = arrayMove(yearProjects, oldIndex, targetIndex);
-      
-      const updatedProjects = localProjects.map((p) => {
-        if (p.year !== targetYear) return p;
-        const newIndex = reordered.findIndex((rp) => rp.id === p.id);
-        return { ...p, sort_order: newIndex };
-      });
-      
-      setLocalProjects(updatedProjects);
-      
-      const updates = reordered.map((p, i) => ({
-        id: p.id,
-        year: targetYear,
-        sort_order: i,
-      }));
-      
-      await reorderProjects.mutateAsync(updates);
-    } else {
-      const sourceYearProjects = (projectsByYear[activeProject.year] || []).filter(
-        (p) => p.id !== active.id
-      );
-      const targetYearProjects = [...(projectsByYear[targetYear] || [])];
-      
-      targetYearProjects.splice(targetIndex, 0, {
-        ...activeProject,
-        year: targetYear,
-      });
-      
-      const updatedProjects = localProjects.map((p) => {
-        if (p.id === active.id) {
-          return { ...p, year: targetYear, sort_order: targetIndex };
-        }
-        if (p.year === activeProject.year && p.id !== active.id) {
-          const idx = sourceYearProjects.findIndex((sp) => sp.id === p.id);
-          return { ...p, sort_order: idx };
-        }
-        if (p.year === targetYear && p.id !== active.id) {
-          const idx = targetYearProjects.findIndex((tp) => tp.id === p.id);
-          return { ...p, sort_order: idx };
-        }
-        return p;
-      });
-      
-      setLocalProjects(updatedProjects);
-      
-      const updates = [
-        ...sourceYearProjects.map((p, i) => ({
-          id: p.id,
-          year: activeProject.year,
-          sort_order: i,
-        })),
-        ...targetYearProjects.map((p, i) => ({
+    const previousProjects = [...localProjects];
+    
+    try {
+      if (activeProject.year === targetYear) {
+        const yearProjects = [...(projectsByYear[targetYear] || [])];
+        const oldIndex = yearProjects.findIndex((p) => p.id === active.id);
+        
+        if (oldIndex === targetIndex) return;
+        
+        const reordered = arrayMove(yearProjects, oldIndex, targetIndex);
+        
+        const updatedProjects = localProjects.map((p) => {
+          if (p.year !== targetYear) return p;
+          const newIndex = reordered.findIndex((rp) => rp.id === p.id);
+          return { ...p, sort_order: newIndex };
+        });
+        
+        setLocalProjects(updatedProjects);
+        
+        const updates = reordered.map((p, i) => ({
           id: p.id,
           year: targetYear,
           sort_order: i,
-        })),
-      ];
-      
-      await reorderProjects.mutateAsync(updates);
+        }));
+        
+        await reorderProjects.mutateAsync(updates);
+      } else {
+        const sourceYearProjects = (projectsByYear[activeProject.year] || []).filter(
+          (p) => p.id !== active.id
+        );
+        const targetYearProjects = [...(projectsByYear[targetYear] || [])];
+        
+        targetYearProjects.splice(targetIndex, 0, {
+          ...activeProject,
+          year: targetYear,
+        });
+        
+        const updatedProjects = localProjects.map((p) => {
+          if (p.id === active.id) {
+            const idx = targetYearProjects.findIndex((tp) => tp.id === p.id);
+            return { ...p, year: targetYear, sort_order: idx };
+          }
+          if (p.year === activeProject.year && p.id !== active.id) {
+            const idx = sourceYearProjects.findIndex((sp) => sp.id === p.id);
+            return { ...p, sort_order: idx };
+          }
+          if (p.year === targetYear && p.id !== active.id) {
+            const idx = targetYearProjects.findIndex((tp) => tp.id === p.id);
+            return { ...p, sort_order: idx };
+          }
+          return p;
+        });
+        
+        setLocalProjects(updatedProjects);
+        
+        const updates = [
+          ...sourceYearProjects.map((p, i) => ({
+            id: p.id,
+            year: activeProject.year,
+            sort_order: i,
+          })),
+          ...targetYearProjects.map((p, i) => ({
+            id: p.id,
+            year: targetYear,
+            sort_order: i,
+          })),
+        ];
+        
+        await reorderProjects.mutateAsync(updates);
+      }
+    } catch (err) {
+      console.error("Failed to reorder projects:", err);
+      setLocalProjects(previousProjects);
     }
   };
 
