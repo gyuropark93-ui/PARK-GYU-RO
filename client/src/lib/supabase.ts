@@ -19,6 +19,7 @@ export interface Project {
   cover_url: string | null;
   created_at: string;
   updated_at?: string;
+  sort_order?: number;
 }
 
 export type ProjectInsert = Omit<Project, 'id' | 'created_at' | 'updated_at'>;

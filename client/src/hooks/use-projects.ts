@@ -17,6 +17,7 @@ export function useProjects() {
         .from("projects")
         .select("*")
         .order("year", { ascending: false })
+        .order("sort_order", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -51,6 +52,7 @@ export function useProjectsByYear(year: number) {
         .from("projects")
         .select("*")
         .eq("year", year)
+        .order("sort_order", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -116,6 +118,31 @@ export function useDeleteProject() {
       const { error } = await supabase.from("projects").delete().eq("id", id);
 
       if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+export function useReorderProjects() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (
+      projects: { id: string; year: number; sort_order: number }[]
+    ) => {
+      const updates = projects.map((p) =>
+        supabase
+          .from("projects")
+          .update({ year: p.year, sort_order: p.sort_order })
+          .eq("id", p.id)
+      );
+      const results = await Promise.all(updates);
+      const errors = results.filter((r) => r.error);
+      if (errors.length > 0) {
+        throw new Error("Failed to update some projects");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
