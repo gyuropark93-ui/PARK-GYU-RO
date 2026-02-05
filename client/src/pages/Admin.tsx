@@ -1303,6 +1303,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    console.log("cover file selected", file?.name);
     if (!file) return;
     setUploading(true);
     try {
@@ -1625,7 +1626,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
                     />
                     {selectedBlockId === "cover" && (
                       <div 
-                        className="absolute top-2 right-2 z-50"
+                        className="absolute top-2 right-2 z-50 pointer-events-auto"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button
@@ -1635,6 +1636,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
+                            console.log("cover replace clicked");
                             if (coverInputRef.current) {
                               coverInputRef.current.value = '';
                               coverInputRef.current.click();
@@ -1652,7 +1654,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
                           ref={coverInputRef}
                           type="file"
                           accept="image/*,image/gif,video/mp4,video/webm"
-                          className="sr-only"
+                          className="hidden"
                           onChange={handleCoverUpload}
                           disabled={uploading}
                         />
