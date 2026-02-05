@@ -1625,40 +1625,26 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
                       className="w-full aspect-video object-cover rounded-lg"
                     />
                     {selectedBlockId === "cover" && (
-                      <div 
-                        className="absolute top-2 right-2 z-50 pointer-events-auto"
+                      <label 
+                        className="absolute top-2 right-2 z-50 cursor-pointer"
+                        onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <button
-                          type="button"
-                          data-testid="button-cover-replace"
-                          className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-3 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 transition-colors cursor-pointer"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log("cover replace clicked");
-                            if (coverInputRef.current) {
-                              coverInputRef.current.value = '';
-                              coverInputRef.current.click();
-                            }
-                          }}
-                          disabled={uploading}
-                        >
+                        <span className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-3 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 transition-colors">
                           {uploading ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
                             "Replace"
                           )}
-                        </button>
+                        </span>
                         <input
-                          ref={coverInputRef}
                           type="file"
                           accept="image/*,image/gif,video/mp4,video/webm"
-                          className="hidden"
+                          style={{ position: 'absolute', width: 1, height: 1, opacity: 0, overflow: 'hidden' }}
                           onChange={handleCoverUpload}
                           disabled={uploading}
                         />
-                      </div>
+                      </label>
                     )}
                   </div>
                 ) : (
