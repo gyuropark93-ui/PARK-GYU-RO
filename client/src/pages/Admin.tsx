@@ -1303,14 +1303,33 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    console.log("cover file selected", file?.name);
-    if (!file) return;
+    if (!file || !projectId) return;
     setUploading(true);
     try {
       const url = await uploadImage(file, "covers");
       setCoverUrl(url);
+      await updateProject.mutateAsync({ id: projectId, updates: { cover_url: url } });
+      if (initialDataRef.current) {
+        initialDataRef.current.coverUrl = url;
+      }
     } catch (err) {
       console.error("Cover upload failed:", err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCoverRemove = async () => {
+    if (!projectId) return;
+    setUploading(true);
+    try {
+      setCoverUrl(null);
+      await updateProject.mutateAsync({ id: projectId, updates: { cover_url: null } });
+      if (initialDataRef.current) {
+        initialDataRef.current.coverUrl = null;
+      }
+    } catch (err) {
+      console.error("Cover remove failed:", err);
     } finally {
       setUploading(false);
     }
@@ -1625,26 +1644,36 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
                       className="w-full aspect-video object-cover rounded-lg"
                     />
                     {selectedBlockId === "cover" && (
-                      <label 
-                        className="absolute top-2 right-2 z-50 cursor-pointer"
+                      <div 
+                        className="absolute top-2 right-2 z-50 flex gap-2"
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <span className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-3 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 transition-colors">
-                          {uploading ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            "Replace"
-                          )}
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*,image/gif,video/mp4,video/webm"
-                          style={{ position: 'absolute', width: 1, height: 1, opacity: 0, overflow: 'hidden' }}
-                          onChange={handleCoverUpload}
+                        <label className="cursor-pointer">
+                          <span className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-3 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 transition-colors">
+                            {uploading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              "Replace"
+                            )}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*,image/gif,video/mp4,video/webm"
+                            className="hidden"
+                            onChange={handleCoverUpload}
+                            disabled={uploading}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-3 bg-red-600 text-white hover:bg-red-500 transition-colors"
+                          onClick={handleCoverRemove}
                           disabled={uploading}
-                        />
-                      </label>
+                        >
+                          Remove
+                        </button>
+                      </div>
                     )}
                   </div>
                 ) : (
