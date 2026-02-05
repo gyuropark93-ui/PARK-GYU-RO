@@ -1629,6 +1629,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
         >
           <div className="max-w-3xl mx-auto p-4 md:p-8 space-y-2">
             <div
+              data-block-id="cover"
               className={`bg-zinc-900/50 rounded-xl transition-all ${selectedBlockId === "cover" ? "ring-2 ring-blue-500" : "hover:ring-1 hover:ring-zinc-700"}`}
               onClick={(e) => {
                 e.stopPropagation();
