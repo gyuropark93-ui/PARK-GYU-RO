@@ -1252,6 +1252,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
   } | null>(null);
   const initialBlocksRef = useRef<ProjectBlock[] | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -1308,7 +1309,7 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
       const url = await uploadImage(file, "covers");
       setCoverUrl(url);
     } catch (err) {
-      console.error("Upload failed:", err);
+      console.error("Cover upload failed:", err);
     } finally {
       setUploading(false);
     }
@@ -1623,25 +1624,39 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
                       className="w-full aspect-video object-cover rounded-lg"
                     />
                     {selectedBlockId === "cover" && (
-                      <label 
-                        className="absolute top-2 right-2 cursor-pointer z-10"
+                      <div 
+                        className="absolute top-2 right-2 z-50"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <span className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-3 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 transition-colors">
+                        <button
+                          type="button"
+                          data-testid="button-cover-replace"
+                          className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-3 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 transition-colors cursor-pointer"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (coverInputRef.current) {
+                              coverInputRef.current.value = '';
+                              coverInputRef.current.click();
+                            }
+                          }}
+                          disabled={uploading}
+                        >
                           {uploading ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
                             "Replace"
                           )}
-                        </span>
+                        </button>
                         <input
+                          ref={coverInputRef}
                           type="file"
                           accept="image/*,image/gif,video/mp4,video/webm"
-                          className="hidden"
+                          className="sr-only"
                           onChange={handleCoverUpload}
                           disabled={uploading}
                         />
-                      </label>
+                      </div>
                     )}
                   </div>
                 ) : (
