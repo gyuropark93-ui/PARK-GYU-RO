@@ -1625,21 +1625,20 @@ function ProjectBuilder({ projectId }: { projectId: string }) {
                       className="w-full aspect-video object-cover rounded-lg"
                     />
                     {selectedBlockId === "cover" && (
-                      <label className="absolute top-2 right-2">
-                        <Button size="sm" variant="secondary" asChild>
-                          <span>
-                            {uploading ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              "Replace"
-                            )}
-                          </span>
-                        </Button>
+                      <label className="absolute top-2 right-2 cursor-pointer">
+                        <span className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-3 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 transition-colors">
+                          {uploading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            "Replace"
+                          )}
+                        </span>
                         <input
                           type="file"
                           accept="image/*"
                           className="hidden"
                           onChange={handleCoverUpload}
+                          disabled={uploading}
                         />
                       </label>
                     )}
